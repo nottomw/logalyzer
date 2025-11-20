@@ -1,6 +1,9 @@
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
-use egui::{text::{LayoutJob, TextFormat, TextWrapping}, Color32, FontId};
+use egui::{
+    Color32, FontId,
+    text::{LayoutJob, TextFormat, TextWrapping},
+};
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions::default();
@@ -14,11 +17,7 @@ fn main() -> eframe::Result<()> {
 fn make_rich_text() -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    job.append(
-        "This is some ",
-        0.0,
-        TextFormat::default(),
-    );
+    job.append("This is some ", 0.0, TextFormat::default());
 
     job.append(
         "highlighted ",
@@ -63,7 +62,6 @@ impl Default for LogalyzerGUI {
 
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-
         let available_rect = ctx.available_rect();
 
         let bottom_panel_height = available_rect.height() * 0.2;
@@ -74,52 +72,63 @@ impl eframe::App for LogalyzerGUI {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let _ = ui.button("File");
-                    let _ = ui.button("Remote");
-                    let _ = ui.button("Rules");
+                    let button_file = ui.button("File");
+                    if button_file.clicked() {
+                        println!("File button clicked");
+                    }
+
+                    let button_remote = ui.button("Remote");
+                    if button_remote.clicked() {
+                        println!("Remote button clicked");
+                    }
+
+                    let button_rules = ui.button("Rules");
+                    if button_rules.clicked() {
+                        println!("Rules button clicked");
+                    }
 
                     ui.checkbox(&mut self.wrap_text, "Enable line wrapping");
-                    ui.checkbox(&mut self.autoscroll, "Autoscroll");    
+                    ui.checkbox(&mut self.autoscroll, "Autoscroll");
                 });
 
                 ui.horizontal(|ui| {
-                    egui::Grid::new("")
-                    .show(ui, |ui| {
+                    egui::Grid::new("").show(ui, |ui| {
                         ui.label("Search:");
                         ui.add_sized(
                             [300.0, 20.0],
-                            egui::TextEdit::singleline(&mut self.search_term));
+                            egui::TextEdit::singleline(&mut self.search_term),
+                        );
                         ui.end_row();
 
                         ui.label("Filter:");
                         ui.add_sized(
                             [300.0, 20.0],
-                            egui::TextEdit::singleline(&mut self.filter_term));
+                            egui::TextEdit::singleline(&mut self.filter_term),
+                        );
                         ui.end_row();
                     });
                 });
             });
 
-        let _central_panel = egui::CentralPanel::default()
-            .show(ctx, |ui| {
-                egui::ScrollArea::both()
-                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
-                    .show(ui, |ui| {
-                        ui.set_min_height(central_panel_height);
+        let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
+            egui::ScrollArea::both()
+                .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+                .show(ui, |ui| {
+                    ui.set_min_height(central_panel_height);
 
-                        let mut job = make_rich_text();
-                        let mut text_wrapping = TextWrapping::default();
-                        if self.wrap_text {
-                            text_wrapping.max_width = ui.available_width();
-                            ui.set_min_width(ui.available_width());
-                        } else {
-                            text_wrapping.max_width = f32::INFINITY;
-                            ui.set_min_width(f32::INFINITY);
-                        }
-            
-                        job.wrap = text_wrapping;
-                        ui.label(job);
-                    });
+                    let mut job = make_rich_text();
+                    let mut text_wrapping = TextWrapping::default();
+                    if self.wrap_text {
+                        text_wrapping.max_width = ui.available_width();
+                        ui.set_min_width(ui.available_width());
+                    } else {
+                        text_wrapping.max_width = f32::INFINITY;
+                        ui.set_min_width(f32::INFINITY);
+                    }
+
+                    job.wrap = text_wrapping;
+                    ui.label(job);
+                });
         });
     }
 }
