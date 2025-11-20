@@ -74,7 +74,9 @@ impl eframe::App for LogalyzerGUI {
                 ui.horizontal(|ui| {
                     let button_file = ui.button("File");
                     if button_file.clicked() {
-                        println!("File button clicked");
+                        if let Some(path) = rfd::FileDialog::new().pick_file() {
+                            println!("Selected file: {:?}", path);
+                        }
                     }
 
                     let button_remote = ui.button("Remote");
