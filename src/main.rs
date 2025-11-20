@@ -44,7 +44,7 @@ struct LogalyzerGUI {
     wrap_text: bool,
     autoscroll: bool,
     search_term: String,
-    grep_term: String,
+    filter_term: String,
 }
 
 impl Default for LogalyzerGUI {
@@ -53,7 +53,7 @@ impl Default for LogalyzerGUI {
             wrap_text: true,
             autoscroll: false,
             search_term: String::new(),
-            grep_term: String::new(),
+            filter_term: String::new(),
         }
     }
 }
@@ -74,22 +74,29 @@ impl eframe::App for LogalyzerGUI {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let _ = ui.button("file");
-                    let _ = ui.button("remote");
-                    let _ = ui.button("rules");
+                    let _ = ui.button("File");
+                    let _ = ui.button("Remote");
+                    let _ = ui.button("Rules");
 
                     ui.checkbox(&mut self.wrap_text, "Enable line wrapping");
                     ui.checkbox(&mut self.autoscroll, "Autoscroll");    
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("search:");
-                    ui.text_edit_singleline(&mut self.search_term);
-                });
+                    egui::Grid::new("")
+                    .show(ui, |ui| {
+                        ui.label("Search:");
+                        ui.add_sized(
+                            [300.0, 20.0],
+                            egui::TextEdit::singleline(&mut self.search_term));
+                        ui.end_row();
 
-                ui.horizontal(|ui| {
-                    ui.label("grep:");
-                    ui.text_edit_singleline(&mut self.grep_term);
+                        ui.label("Filter:");
+                        ui.add_sized(
+                            [300.0, 20.0],
+                            egui::TextEdit::singleline(&mut self.filter_term));
+                        ui.end_row();
+                    });
                 });
             });
 
