@@ -1,5 +1,3 @@
-use std::num::Wrapping;
-
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::{
@@ -22,6 +20,7 @@ struct LogalyzerGUI {
     search_term: String,
     filter_term: String,
     file_path: Option<String>,
+    vertical_scroll_offset: f32,
 }
 
 impl Default for LogalyzerGUI {
@@ -32,6 +31,7 @@ impl Default for LogalyzerGUI {
             search_term: String::new(),
             filter_term: String::new(),
             file_path: None,
+            vertical_scroll_offset: 0.0,
         }
     }
 }
@@ -68,6 +68,8 @@ struct LoadedFile {
 }
 
 fn load_file(path: String) -> Option<LoadedFile> {
+    // println!("Loading file: {}", path);
+
     let read_result = std::fs::read_to_string(&path);
     if read_result.is_err() {
         return None;
@@ -105,6 +107,8 @@ impl eframe::App for LogalyzerGUI {
 
         let bottom_panel_height = available_rect.height() * 0.2;
         let central_panel_height = available_rect.height() - bottom_panel_height;
+
+        let window_width = available_rect.width();
 
         let _bottom_panel = egui::TopBottomPanel::bottom("controls")
             .exact_height(bottom_panel_height)
@@ -168,16 +172,15 @@ impl eframe::App for LogalyzerGUI {
             });
 
         let mut job = make_rich_text();
-        let mut desired_width: f32 = 100.0; // TODO: zero out
+        let mut loaded_file_max_line_chars: usize = 0;
         let mut loaded_file_linecount: usize = 0;
 
         if self.file_path.is_some() {
+            // TODO: this loads the file every redraw
             let loaded_file_info = load_file(self.file_path.clone().unwrap());
             if let Some(loaded_file) = loaded_file_info {
                 job = loaded_file.layout_job;
-                desired_width = loaded_file.content_max_line_chars as f32 * 8.0;
-                desired_width += 20.0; // some padding for char rendering
-
+                loaded_file_max_line_chars = loaded_file.content_max_line_chars;
                 loaded_file_linecount = loaded_file.content_line_count;
             }
         }
@@ -188,29 +191,47 @@ impl eframe::App for LogalyzerGUI {
         }
 
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
-            // ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-            //     ui.label(line_numbers);
+            ui.set_min_height(central_panel_height);
 
-            egui::ScrollArea::both()
-                .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
-                .show(ui, |ui| {
-                    ui.set_min_height(central_panel_height);
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt("line_numbers")
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
+                    .vertical_scroll_offset(self.vertical_scroll_offset)
+                    .show(ui, |ui| {
+                        ui.label(line_numbers);
+                    });
 
-                    let mut text_wrapping = TextWrapping::default();
-                    if self.wrap_text {
-                        let wrapping_width = available_rect.width();
-                        text_wrapping.max_width = wrapping_width;
-                        text_wrapping.break_anywhere = true;
-                        ui.set_width(wrapping_width);
-                    } else {
-                        text_wrapping.max_width = desired_width;
-                        ui.set_width(desired_width);
-                    }
+                let scroll_area_width_max = if self.wrap_text {
+                    window_width
+                } else {
+                    (loaded_file_max_line_chars as f32) * 8.0 + 50.0
+                };
 
-                    job.wrap = text_wrapping;
-                    ui.label(job);
-                });
-            // });
+                let scroll_area = egui::ScrollArea::both()
+                    .id_salt("log_file")
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+                    .max_width(scroll_area_width_max)
+                    .show(ui, |ui| {
+                        let mut text_wrapping = TextWrapping::default();
+                        if self.wrap_text {
+                            text_wrapping.max_width = scroll_area_width_max - 50.0;
+                            text_wrapping.break_anywhere = true;
+                            ui.set_width(scroll_area_width_max);
+                        } else {
+                            text_wrapping.max_width = scroll_area_width_max;
+                            ui.set_width(scroll_area_width_max);
+                        }
+
+                        job.wrap = text_wrapping;
+
+                        ui.add(egui::Label::new(job).wrap_mode(egui::TextWrapMode::Wrap));
+
+                        // ui.label(job);
+                    });
+
+                self.vertical_scroll_offset = scroll_area.state.offset.y;
+            });
         });
     }
 }
