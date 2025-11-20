@@ -14,6 +14,26 @@ fn main() -> eframe::Result<()> {
     )
 }
 
+struct LogalyzerGUI {
+    wrap_text: bool,
+    autoscroll: bool,
+    search_term: String,
+    filter_term: String,
+    file_path: Option<String>,
+}
+
+impl Default for LogalyzerGUI {
+    fn default() -> Self {
+        Self {
+            wrap_text: true,
+            autoscroll: false,
+            search_term: String::new(),
+            filter_term: String::new(),
+            file_path: None,
+        }
+    }
+}
+
 fn make_rich_text() -> LayoutJob {
     let mut job = LayoutJob::default();
 
@@ -39,22 +59,20 @@ fn make_rich_text() -> LayoutJob {
     job
 }
 
-struct LogalyzerGUI {
-    wrap_text: bool,
-    autoscroll: bool,
-    search_term: String,
-    filter_term: String,
-}
+fn load_file(path: String) -> LayoutJob {
+    let mut job = LayoutJob::default();
 
-impl Default for LogalyzerGUI {
-    fn default() -> Self {
-        Self {
-            wrap_text: true,
-            autoscroll: false,
-            search_term: String::new(),
-            filter_term: String::new(),
-        }
-    }
+    let file_content = std::fs::read_to_string(&path)
+        .unwrap_or_else(|_| format!("Failed to read file: {}\n", path));
+
+    let text_format = TextFormat {
+        font_id: FontId::monospace(12.0),
+        ..Default::default()
+    };
+
+    job.append(&file_content, 0.0, text_format);
+
+    job
 }
 
 // TODO: lua
@@ -76,6 +94,7 @@ impl eframe::App for LogalyzerGUI {
                     if button_file.clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_file() {
                             println!("Selected file: {:?}", path);
+                            self.file_path = Some(path.to_string_lossy().to_string());
                         }
                     }
 
@@ -119,6 +138,10 @@ impl eframe::App for LogalyzerGUI {
                     ui.set_min_height(central_panel_height);
 
                     let mut job = make_rich_text();
+                    if self.file_path.is_some() {
+                        job = load_file(self.file_path.clone().unwrap());
+                    }
+
                     let mut text_wrapping = TextWrapping::default();
                     if self.wrap_text {
                         text_wrapping.max_width = ui.available_width();
