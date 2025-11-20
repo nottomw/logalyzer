@@ -45,33 +45,46 @@ fn make_rich_text() -> LayoutJob {
 
 struct LogalyzerGUI {
     wrap_text: bool,
+    autoscroll: bool,
+    search_term: String,
+    grep_term: String,
 }
 
 impl Default for LogalyzerGUI {
     fn default() -> Self {
         Self {
             wrap_text: true,
+            autoscroll: false,
+            search_term: String::new(),
+            grep_term: String::new(),
         }
     }
 }
 
+// TODO: lua
+// TODO: loading files / reading remotely with a specified command
+// 
+
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+
+        let central_panel = egui::CentralPanel::default();
+
+        central_panel.show(ctx, |ui| {
             let available_rect = ui.ctx().available_rect();
             let total_height = available_rect.height();
 
             let sep_height = 6.0;
             let height_80 = total_height * 0.8 - sep_height / 2.0;
-            let height_20 = total_height * 0.2 - sep_height / 2.0;
+            let _height_20 = total_height * 0.2 - sep_height / 2.0;
 
             let upper_rect = egui::Rect::from_min_size(
                 available_rect.min,
                 egui::vec2(available_rect.width(), height_80),
             );
 
-            // Text area.
-            ui.allocate_ui_at_rect(upper_rect, |ui| {
+            let upper_area_builder = egui::UiBuilder::new().max_rect(upper_rect);
+            ui.scope_builder(upper_area_builder, |ui| {
                 egui::ScrollArea::both()
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_height(height_80)
@@ -93,20 +106,33 @@ impl eframe::App for LogalyzerGUI {
                     });
             });
 
-            let separator_rect = egui::Rect::from_min_max(
-                egui::pos2(available_rect.min.x, available_rect.min.y + height_80),
-                egui::pos2(available_rect.max.x, available_rect.min.y + height_80 + sep_height),
-            );
-            ui.allocate_ui_at_rect(separator_rect, |ui| {
-                ui.separator();
-            });
+            ui.separator();
 
             let lower_rect = egui::Rect::from_min_max(
                 egui::pos2(available_rect.min.x, available_rect.min.y + height_80 + sep_height),
                 available_rect.max,
             );
-            ui.allocate_ui_at_rect(lower_rect, |ui| {
-                ui.checkbox(&mut self.wrap_text, "Enable line wrapping");
+
+            let lower_area_builder = egui::UiBuilder::new().max_rect(lower_rect);
+            ui.scope_builder(lower_area_builder, |ui| {
+                ui.horizontal(|ui| {
+                    let _ = ui.button("file");
+                    let _ = ui.button("remote");
+                    let _ = ui.button("rules");
+
+                    ui.checkbox(&mut self.wrap_text, "Enable line wrapping");
+                    ui.checkbox(&mut self.autoscroll, "Autoscroll");    
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("search:");
+                    ui.text_edit_singleline(&mut self.search_term);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("grep:");
+                    ui.text_edit_singleline(&mut self.grep_term);
+                });
             });
         });
     }
