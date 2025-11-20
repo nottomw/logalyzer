@@ -64,53 +64,15 @@ impl Default for LogalyzerGUI {
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 
-        let central_panel = egui::CentralPanel::default();
+        let available_rect = ctx.available_rect();
 
-        central_panel.show(ctx, |ui| {
-            let available_rect = ui.ctx().available_rect();
-            let total_height = available_rect.height();
+        let bottom_panel_height = available_rect.height() * 0.2;
+        let central_panel_height = available_rect.height() - bottom_panel_height;
 
-            let sep_height = 6.0;
-            let height_80 = total_height * 0.8 - sep_height / 2.0;
-            let _height_20 = total_height * 0.2 - sep_height / 2.0;
-
-            let upper_rect = egui::Rect::from_min_size(
-                available_rect.min,
-                egui::vec2(available_rect.width(), height_80),
-            );
-
-            let upper_area_builder = egui::UiBuilder::new().max_rect(upper_rect);
-            ui.scope_builder(upper_area_builder, |ui| {
-                egui::ScrollArea::both()
-                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
-                    .max_height(height_80)
-                    .show(ui, |ui| {
-                        ui.set_min_height(height_80);
-
-                        let mut job = make_rich_text();
-                        let mut text_wrapping = TextWrapping::default();
-                        if self.wrap_text {
-                            text_wrapping.max_width = ui.available_width();
-                            ui.set_min_width(ui.available_width());
-                        } else {
-                            text_wrapping.max_width = f32::INFINITY;
-                            ui.set_min_width(f32::INFINITY);
-                        }
-            
-                        job.wrap = text_wrapping;
-                        ui.label(job);
-                    });
-            });
-
-            ui.separator();
-
-            let lower_rect = egui::Rect::from_min_max(
-                egui::pos2(available_rect.min.x, available_rect.min.y + height_80 + sep_height),
-                available_rect.max,
-            );
-
-            let lower_area_builder = egui::UiBuilder::new().max_rect(lower_rect);
-            ui.scope_builder(lower_area_builder, |ui| {
+        let _bottom_panel = egui::TopBottomPanel::bottom("controls")
+            .exact_height(bottom_panel_height)
+            .resizable(false)
+            .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let _ = ui.button("file");
                     let _ = ui.button("remote");
@@ -130,6 +92,27 @@ impl eframe::App for LogalyzerGUI {
                     ui.text_edit_singleline(&mut self.grep_term);
                 });
             });
+
+        let _central_panel = egui::CentralPanel::default()
+            .show(ctx, |ui| {
+                egui::ScrollArea::both()
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+                    .show(ui, |ui| {
+                        ui.set_min_height(central_panel_height);
+
+                        let mut job = make_rich_text();
+                        let mut text_wrapping = TextWrapping::default();
+                        if self.wrap_text {
+                            text_wrapping.max_width = ui.available_width();
+                            ui.set_min_width(ui.available_width());
+                        } else {
+                            text_wrapping.max_width = f32::INFINITY;
+                            ui.set_min_width(f32::INFINITY);
+                        }
+            
+                        job.wrap = text_wrapping;
+                        ui.label(job);
+                    });
         });
     }
 }
