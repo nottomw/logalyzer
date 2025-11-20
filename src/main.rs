@@ -14,14 +14,12 @@ fn main() -> eframe::Result<()> {
 fn make_rich_text() -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    // Normal text
     job.append(
         "This is some ",
         0.0,
         TextFormat::default(),
     );
 
-    // Word with yellow background
     job.append(
         "highlighted ",
         0.0,
@@ -33,7 +31,6 @@ fn make_rich_text() -> LayoutJob {
         },
     );
 
-    // More normal text
     job.append(
         "text with different background colors.",
         0.0,
@@ -63,7 +60,6 @@ impl Default for LogalyzerGUI {
 
 // TODO: lua
 // TODO: loading files / reading remotely with a specified command
-// 
 
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
