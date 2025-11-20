@@ -59,20 +59,37 @@ fn make_rich_text() -> LayoutJob {
     job
 }
 
-fn load_file(path: String) -> LayoutJob {
-    let mut job = LayoutJob::default();
+struct LoadedFile {
+    layout_job: LayoutJob,
+    content_max_line_chars: usize,
+    content_line_count: usize,
+}
 
-    let file_content = std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| format!("Failed to read file: {}\n", path));
+fn load_file(path: String) -> Option<LoadedFile> {
+    let read_result = std::fs::read_to_string(&path);
+    if read_result.is_err() {
+        return None;
+    }
+
+    let file_content = read_result.unwrap();
 
     let text_format = TextFormat {
         font_id: FontId::monospace(12.0),
         ..Default::default()
     };
 
+    let mut job = LayoutJob::default();
     job.append(&file_content, 0.0, text_format);
 
-    job
+    Some(LoadedFile {
+        layout_job: job,
+        content_max_line_chars: file_content
+            .lines()
+            .map(|line| line.len())
+            .max()
+            .unwrap_or(0),
+        content_line_count: file_content.lines().count(),
+    })
 }
 
 // TODO: lua
@@ -90,7 +107,7 @@ impl eframe::App for LogalyzerGUI {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let button_file = ui.button("File");
+                    let button_file = ui.button("Open File");
                     if button_file.clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_file() {
                             println!("Selected file: {:?}", path);
@@ -98,17 +115,22 @@ impl eframe::App for LogalyzerGUI {
                         }
                     }
 
-                    let button_remote = ui.button("Remote");
+                    let button_remote = ui.button("Open Stream");
                     if button_remote.clicked() {
-                        println!("Remote button clicked");
+                        println!("Open stream button clicked");
                     }
 
-                    let button_rules = ui.button("Rules");
+                    let button_log_format = ui.button("Log Format");
+                    if button_log_format.clicked() {
+                        println!("Log Format button clicked");
+                    }
+
+                    let button_rules = ui.button("Token Rules");
                     if button_rules.clicked() {
-                        println!("Rules button clicked");
+                        println!("Token rules button clicked");
                     }
 
-                    ui.checkbox(&mut self.wrap_text, "Enable line wrapping");
+                    ui.checkbox(&mut self.wrap_text, "Wrap");
                     ui.checkbox(&mut self.autoscroll, "Autoscroll");
                 });
 
@@ -138,8 +160,15 @@ impl eframe::App for LogalyzerGUI {
                     ui.set_min_height(central_panel_height);
 
                     let mut job = make_rich_text();
+                    let mut desired_width: f32 = ui.available_width();
+
                     if self.file_path.is_some() {
-                        job = load_file(self.file_path.clone().unwrap());
+                        let loaded_file_info = load_file(self.file_path.clone().unwrap());
+                        if let Some(loaded_file) = loaded_file_info {
+                            job = loaded_file.layout_job;
+                            desired_width = loaded_file.content_max_line_chars as f32 * 8.0;
+                            desired_width += 20.0; // some padding for char rendering
+                        }
                     }
 
                     let mut text_wrapping = TextWrapping::default();
@@ -147,8 +176,8 @@ impl eframe::App for LogalyzerGUI {
                         text_wrapping.max_width = ui.available_width();
                         ui.set_min_width(ui.available_width());
                     } else {
-                        text_wrapping.max_width = f32::INFINITY;
-                        ui.set_min_width(f32::INFINITY);
+                        text_wrapping.max_width = desired_width;
+                        ui.set_min_width(desired_width);
                     }
 
                     job.wrap = text_wrapping;
