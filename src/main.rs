@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::{
@@ -93,7 +95,9 @@ fn load_file(path: String) -> Option<LoadedFile> {
 }
 
 // TODO: lua
-// TODO: loading files / reading remotely with a specified command
+// TODO: stream support
+// TODO: log format colors
+// TODO: tokenizer colors
 
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -130,6 +134,16 @@ impl eframe::App for LogalyzerGUI {
                         println!("Token rules button clicked");
                     }
 
+                    let button_save_config = ui.button("Save config");
+                    if button_save_config.clicked() {
+                        println!("Save config button clicked");
+                    }
+
+                    let button_load_config = ui.button("Load config");
+                    if button_load_config.clicked() {
+                        println!("Load config button clicked");
+                    }
+
                     ui.checkbox(&mut self.wrap_text, "Wrap");
                     ui.checkbox(&mut self.autoscroll, "Autoscroll");
                 });
@@ -153,36 +167,50 @@ impl eframe::App for LogalyzerGUI {
                 });
             });
 
+        let mut job = make_rich_text();
+        let mut desired_width: f32 = 100.0; // TODO: zero out
+        let mut loaded_file_linecount: usize = 0;
+
+        if self.file_path.is_some() {
+            let loaded_file_info = load_file(self.file_path.clone().unwrap());
+            if let Some(loaded_file) = loaded_file_info {
+                job = loaded_file.layout_job;
+                desired_width = loaded_file.content_max_line_chars as f32 * 8.0;
+                desired_width += 20.0; // some padding for char rendering
+
+                loaded_file_linecount = loaded_file.content_line_count;
+            }
+        }
+
+        let mut line_numbers = String::new();
+        for line_num in 1..=loaded_file_linecount {
+            line_numbers.push_str(&format!("{}\n", line_num));
+        }
+
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
+            // ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+            //     ui.label(line_numbers);
+
             egui::ScrollArea::both()
                 .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                 .show(ui, |ui| {
                     ui.set_min_height(central_panel_height);
 
-                    let mut job = make_rich_text();
-                    let mut desired_width: f32 = ui.available_width();
-
-                    if self.file_path.is_some() {
-                        let loaded_file_info = load_file(self.file_path.clone().unwrap());
-                        if let Some(loaded_file) = loaded_file_info {
-                            job = loaded_file.layout_job;
-                            desired_width = loaded_file.content_max_line_chars as f32 * 8.0;
-                            desired_width += 20.0; // some padding for char rendering
-                        }
-                    }
-
                     let mut text_wrapping = TextWrapping::default();
                     if self.wrap_text {
-                        text_wrapping.max_width = ui.available_width();
-                        ui.set_min_width(ui.available_width());
+                        let wrapping_width = available_rect.width();
+                        text_wrapping.max_width = wrapping_width;
+                        text_wrapping.break_anywhere = true;
+                        ui.set_width(wrapping_width);
                     } else {
                         text_wrapping.max_width = desired_width;
-                        ui.set_min_width(desired_width);
+                        ui.set_width(desired_width);
                     }
 
                     job.wrap = text_wrapping;
                     ui.label(job);
                 });
+            // });
         });
     }
 }
