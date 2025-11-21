@@ -1379,6 +1379,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "log_engine",
+ "rfd",
+]
+
+[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1684,12 +1694,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
-name = "logalyzer"
+name = "log_engine"
 version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
- "rfd",
+]
+
+[[package]]
+name = "logalyzer"
+version = "0.1.0"
+dependencies = [
+ "gui",
 ]
 
 [[package]]
