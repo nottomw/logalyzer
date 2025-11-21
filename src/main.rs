@@ -215,19 +215,15 @@ impl eframe::App for LogalyzerGUI {
                     .show(ui, |ui| {
                         let mut text_wrapping = TextWrapping::default();
                         if self.wrap_text {
-                            text_wrapping.max_width = scroll_area_width_max - 50.0;
                             text_wrapping.break_anywhere = true;
-                            ui.set_width(scroll_area_width_max);
-                        } else {
-                            text_wrapping.max_width = scroll_area_width_max;
-                            ui.set_width(scroll_area_width_max);
                         }
+
+                        text_wrapping.max_width = scroll_area_width_max;
+                        ui.set_width(scroll_area_width_max);
 
                         job.wrap = text_wrapping;
 
                         ui.add(egui::Label::new(job).wrap_mode(egui::TextWrapMode::Wrap));
-
-                        // ui.label(job);
                     });
 
                 self.vertical_scroll_offset = scroll_area.state.offset.y;
