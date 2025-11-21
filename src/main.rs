@@ -14,16 +14,15 @@ fn main() -> eframe::Result<()> {
     )
 }
 
-struct LogalyzerGUI {
+struct UserSettings {
     wrap_text: bool,
     autoscroll: bool,
     search_term: String,
     filter_term: String,
     file_path: Option<String>,
-    vertical_scroll_offset: f32,
 }
 
-impl Default for LogalyzerGUI {
+impl Default for UserSettings {
     fn default() -> Self {
         Self {
             wrap_text: true,
@@ -31,6 +30,19 @@ impl Default for LogalyzerGUI {
             search_term: String::new(),
             filter_term: String::new(),
             file_path: None,
+        }
+    }
+}
+
+struct LogalyzerGUI {
+    user_settings: UserSettings,
+    vertical_scroll_offset: f32,
+}
+
+impl Default for LogalyzerGUI {
+    fn default() -> Self {
+        Self {
+            user_settings: UserSettings::default(),
             vertical_scroll_offset: 0.0,
         }
     }
@@ -117,7 +129,7 @@ impl eframe::App for LogalyzerGUI {
                     if button_file.clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_file() {
                             println!("Selected file: {:?}", path);
-                            self.file_path = Some(path.to_string_lossy().to_string());
+                            self.user_settings.file_path = Some(path.to_string_lossy().to_string());
                         }
                     }
 
@@ -146,8 +158,8 @@ impl eframe::App for LogalyzerGUI {
                         println!("Load config button clicked");
                     }
 
-                    ui.checkbox(&mut self.wrap_text, "Wrap");
-                    ui.checkbox(&mut self.autoscroll, "Autoscroll");
+                    ui.checkbox(&mut self.user_settings.wrap_text, "Wrap");
+                    ui.checkbox(&mut self.user_settings.autoscroll, "Autoscroll");
                 });
 
                 ui.horizontal(|ui| {
@@ -155,14 +167,14 @@ impl eframe::App for LogalyzerGUI {
                         ui.label("Search:");
                         ui.add_sized(
                             [300.0, 20.0],
-                            egui::TextEdit::singleline(&mut self.search_term),
+                            egui::TextEdit::singleline(&mut self.user_settings.search_term),
                         );
                         ui.end_row();
 
                         ui.label("Filter:");
                         ui.add_sized(
                             [300.0, 20.0],
-                            egui::TextEdit::singleline(&mut self.filter_term),
+                            egui::TextEdit::singleline(&mut self.user_settings.filter_term),
                         );
                         ui.end_row();
                     });
@@ -173,9 +185,9 @@ impl eframe::App for LogalyzerGUI {
         let mut loaded_file_max_line_chars: usize = 0;
         let mut loaded_file_linecount: usize = 0;
 
-        if self.file_path.is_some() {
+        if self.user_settings.file_path.is_some() {
             // TODO: this loads the file every redraw
-            let loaded_file_info = load_file(self.file_path.clone().unwrap());
+            let loaded_file_info = load_file(self.user_settings.file_path.clone().unwrap());
             if let Some(loaded_file) = loaded_file_info {
                 job = loaded_file.layout_job;
                 loaded_file_max_line_chars = loaded_file.content_max_line_chars;
@@ -202,7 +214,7 @@ impl eframe::App for LogalyzerGUI {
                         width_left_after_adding_line_numbers = ui.available_width();
                     });
 
-                let scroll_area_width_max = if self.wrap_text {
+                let scroll_area_width_max = if self.user_settings.wrap_text {
                     width_left_after_adding_line_numbers
                 } else {
                     (loaded_file_max_line_chars as f32) * 8.0 + 50.0
@@ -214,7 +226,7 @@ impl eframe::App for LogalyzerGUI {
                     .max_width(scroll_area_width_max)
                     .show(ui, |ui| {
                         let mut text_wrapping = TextWrapping::default();
-                        if self.wrap_text {
+                        if self.user_settings.wrap_text {
                             text_wrapping.break_anywhere = true;
                         }
 
