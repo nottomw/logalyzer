@@ -34,14 +34,34 @@ impl Default for UserSettings {
     }
 }
 
+struct OpenedFileMetadata {
+    content: String,
+    content_max_line_chars: usize,
+    content_line_count: usize,
+}
+
+impl Default for OpenedFileMetadata {
+    fn default() -> Self {
+        Self {
+            content: String::new(),
+            content_max_line_chars: 0,
+            content_line_count: 0,
+        }
+    }
+}
+
 struct LogalyzerState {
     vertical_scroll_offset: f32,
+    opened_file: Option<OpenedFileMetadata>,
+    log_job: LayoutJob,
 }
 
 impl Default for LogalyzerState {
     fn default() -> Self {
         Self {
             vertical_scroll_offset: 0.0,
+            opened_file: None,
+            log_job: make_rich_text(),
         }
     }
 }
@@ -85,18 +105,18 @@ fn make_rich_text() -> LayoutJob {
     job
 }
 
-struct LoadedFile {
-    layout_job: LayoutJob,
-    content_max_line_chars: usize,
-    content_line_count: usize,
-}
-
-fn load_file(path: String) -> Option<LoadedFile> {
+fn load_file(path: String) -> (LayoutJob, Option<OpenedFileMetadata>) {
     // println!("Loading file: {}", path);
+    let mut job = LayoutJob::default();
 
     let read_result = std::fs::read_to_string(&path);
     if read_result.is_err() {
-        return None;
+        job.append(
+            &format!("Failed to read file: {}\n", path),
+            0.0,
+            TextFormat::default(),
+        );
+        return (job, None);
     }
 
     let file_content = read_result.unwrap();
@@ -106,18 +126,18 @@ fn load_file(path: String) -> Option<LoadedFile> {
         ..Default::default()
     };
 
-    let mut job = LayoutJob::default();
     job.append(&file_content, 0.0, text_format);
 
-    Some(LoadedFile {
-        layout_job: job,
-        content_max_line_chars: file_content
-            .lines()
-            .map(|line| line.len())
-            .max()
-            .unwrap_or(0),
-        content_line_count: file_content.lines().count(),
-    })
+    let mut opened_file_meta = OpenedFileMetadata::default();
+    opened_file_meta.content = file_content.clone();
+    opened_file_meta.content_max_line_chars = file_content
+        .lines()
+        .map(|line| line.len())
+        .max()
+        .unwrap_or(0);
+    opened_file_meta.content_line_count = file_content.lines().count();
+
+    (job, Some(opened_file_meta))
 }
 
 // TODO: lua
@@ -193,44 +213,47 @@ impl eframe::App for LogalyzerGUI {
                 });
             });
 
-        let mut job = make_rich_text();
-        let mut loaded_file_max_line_chars: usize = 0;
-        let mut loaded_file_linecount: usize = 0;
-
-        if self.user_settings.file_path.is_some() {
+        if self.user_settings.file_path.is_some() && !self.state.opened_file.is_some() {
             // TODO: this loads the file every redraw
-            let loaded_file_info = load_file(self.user_settings.file_path.clone().unwrap());
-            if let Some(loaded_file) = loaded_file_info {
-                job = loaded_file.layout_job;
-                loaded_file_max_line_chars = loaded_file.content_max_line_chars;
-                loaded_file_linecount = loaded_file.content_line_count;
-            }
-        }
+            println!("LOADIHNG FILE!");
+            let (file_job, loaded_file_meta) =
+                load_file(self.user_settings.file_path.clone().unwrap());
 
-        let mut line_numbers = String::new();
-        for line_num in 1..=loaded_file_linecount {
-            line_numbers.push_str(&format!("{}\n", line_num));
+            self.state.log_job = file_job.clone();
+            self.state.opened_file = loaded_file_meta;
         }
 
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_height(central_panel_height);
 
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                let mut width_left_after_adding_line_numbers = 0.0;
-                egui::ScrollArea::vertical()
-                    .id_salt("line_numbers")
-                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
-                    .vertical_scroll_offset(self.state.vertical_scroll_offset)
-                    .show(ui, |ui| {
-                        ui.label(line_numbers);
-                        width_left_after_adding_line_numbers = ui.available_width();
-                    });
+                let mut width_left_after_adding_line_numbers = ui.available_width();
 
-                let scroll_area_width_max = if self.user_settings.wrap_text {
-                    width_left_after_adding_line_numbers
-                } else {
-                    (loaded_file_max_line_chars as f32) * 8.0 + 50.0
-                };
+                let mut scroll_area_width_max = width_left_after_adding_line_numbers;
+
+                if self.state.opened_file.is_some() {
+                    let opened_file = self.state.opened_file.as_ref().unwrap();
+
+                    let mut line_numbers = String::new();
+                    for line_num in 1..=opened_file.content_line_count {
+                        line_numbers.push_str(&format!("{}\n", line_num));
+                    }
+
+                    egui::ScrollArea::vertical()
+                        .id_salt("line_numbers")
+                        .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
+                        .vertical_scroll_offset(self.state.vertical_scroll_offset)
+                        .show(ui, |ui| {
+                            ui.label(line_numbers);
+                            width_left_after_adding_line_numbers = ui.available_width();
+                        });
+
+                    scroll_area_width_max = if self.user_settings.wrap_text {
+                        width_left_after_adding_line_numbers
+                    } else {
+                        (opened_file.content_max_line_chars as f32) * 8.0 + 50.0
+                    };
+                }
 
                 let scroll_area = egui::ScrollArea::both()
                     .id_salt("log_file")
@@ -245,9 +268,12 @@ impl eframe::App for LogalyzerGUI {
                         text_wrapping.max_width = scroll_area_width_max;
                         ui.set_width(scroll_area_width_max);
 
-                        job.wrap = text_wrapping;
+                        self.state.log_job.wrap = text_wrapping;
 
-                        ui.add(egui::Label::new(job).wrap_mode(egui::TextWrapMode::Wrap));
+                        ui.add(
+                            egui::Label::new(self.state.log_job.clone())
+                                .wrap_mode(egui::TextWrapMode::Wrap),
+                        );
                     });
 
                 self.state.vertical_scroll_offset = scroll_area.state.offset.y;
