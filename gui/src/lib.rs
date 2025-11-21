@@ -45,7 +45,7 @@ impl Default for LogalyzerState {
         Self {
             vertical_scroll_offset: 0.0,
             opened_file: None,
-            log_job: make_rich_text(),
+            log_job: default_log_content(),
         }
     }
 }

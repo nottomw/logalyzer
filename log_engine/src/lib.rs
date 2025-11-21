@@ -19,7 +19,7 @@ impl Default for OpenedFileMetadata {
     }
 }
 
-pub fn make_rich_text() -> LayoutJob {
+pub fn default_log_content() -> LayoutJob {
     let mut job = LayoutJob::default();
 
     job.append("This is some ", 0.0, TextFormat::default());
