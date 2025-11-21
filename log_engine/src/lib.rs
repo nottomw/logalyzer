@@ -143,6 +143,9 @@ pub fn recalculate_log_job(
 ) -> Option<LayoutJob> {
     let mut job = LayoutJob::default();
 
+    let mut feature_log_format = false;
+    let mut feature_log_format_regex: regex::Regex = regex::Regex::new("").unwrap();
+    let mut feature_log_format_coloring_pattern_split: Vec<&str> = Vec::new();
     if user_settings.log_format.is_some() {
         let log_format = user_settings.log_format.as_ref().unwrap();
         assert!(
@@ -153,15 +156,18 @@ pub fn recalculate_log_job(
             !log_format.pattern_coloring.is_empty(),
             "Log format pattern coloring is empty"
         );
+
+        feature_log_format = true;
+        feature_log_format_regex = regex::Regex::new(&log_format.pattern).unwrap();
+        feature_log_format_coloring_pattern_split = log_format
+            .pattern_coloring
+            .split(',')
+            .collect::<Vec<&str>>();
     }
 
     for line in opened_file.content.lines() {
-        if let Some(log_format) = &user_settings.log_format {
-            let line_matched_groups = regex::Regex::new(&log_format.pattern)
-                .unwrap()
-                .captures(line);
-
-            // If there were no captures bail out, but add the line to job.
+        if feature_log_format {
+            let line_matched_groups = feature_log_format_regex.captures(line);
             if line_matched_groups.is_none() {
                 let text_format = TextFormat {
                     font_id: FontId::monospace(12.0),
@@ -175,13 +181,8 @@ pub fn recalculate_log_job(
             let line_matched_groups = line_matched_groups.unwrap();
             let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
 
-            let coloring_pattern_split = log_format
-                .pattern_coloring
-                .split(',')
-                .collect::<Vec<&str>>();
-
             // Verify the number of captures match the number of coloring pattern.
-            if actual_group_count != coloring_pattern_split.len() {
+            if actual_group_count != feature_log_format_coloring_pattern_split.len() {
                 let text_format = TextFormat {
                     font_id: FontId::monospace(12.0),
                     ..Default::default()
@@ -199,7 +200,7 @@ pub fn recalculate_log_job(
                 }
 
                 let group_str = group.unwrap().as_str();
-                let coloring_str = coloring_pattern_split[i - 1];
+                let coloring_str = feature_log_format_coloring_pattern_split[i - 1];
                 let text_format = color_name_to_text_format(coloring_str);
 
                 // If this is the last matching group, append a newline.
