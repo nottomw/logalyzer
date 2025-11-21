@@ -14,26 +14,6 @@ pub fn run_gui() {
     // TODO: return error code
 }
 
-struct UserSettings {
-    wrap_text: bool,
-    autoscroll: bool,
-    search_term: String,
-    filter_term: String,
-    file_path: Option<String>,
-}
-
-impl Default for UserSettings {
-    fn default() -> Self {
-        Self {
-            wrap_text: true,
-            autoscroll: false,
-            search_term: String::new(),
-            filter_term: String::new(),
-            file_path: None,
-        }
-    }
-}
-
 struct LogalyzerState {
     vertical_scroll_offset: f32,
     opened_file: Option<OpenedFileMetadata>,
@@ -52,6 +32,7 @@ impl Default for LogalyzerState {
 
 struct LogalyzerGUI {
     user_settings: UserSettings,
+    user_settings_cached: UserSettings,
     state: LogalyzerState,
 }
 
@@ -59,6 +40,7 @@ impl Default for LogalyzerGUI {
     fn default() -> Self {
         Self {
             user_settings: UserSettings::default(),
+            user_settings_cached: UserSettings::default(),
             state: LogalyzerState::default(),
         }
     }
@@ -80,7 +62,7 @@ impl eframe::App for LogalyzerGUI {
                     if button_file.clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_file() {
                             println!("Selected file: {:?}", path);
-                            self.user_settings.file_path = Some(path.to_string_lossy().to_string());
+                            self.user_settings.file_path = path.to_string_lossy().to_string();
                         }
                     }
 
@@ -132,12 +114,22 @@ impl eframe::App for LogalyzerGUI {
                 });
             });
 
-        if self.user_settings.file_path.is_some() && !self.state.opened_file.is_some() {
-            let (file_job, loaded_file_meta) =
-                load_file(self.user_settings.file_path.clone().unwrap());
+        // TODO: log job recalc should be offloaded to a separate thread
+        if self.user_settings.file_path.is_empty() == false {
+            if !self.state.opened_file.is_some() {
+                let (file_job, loaded_file_meta) = load_file(&self.user_settings.file_path);
 
-            self.state.log_job = file_job.clone();
-            self.state.opened_file = loaded_file_meta;
+                self.state.log_job = file_job.clone();
+                self.state.opened_file = loaded_file_meta;
+            } else {
+                if self.user_settings != self.user_settings_cached {
+                    self.user_settings_cached = self.user_settings.clone();
+                    let opened_file = self.state.opened_file.as_ref().unwrap();
+                    if let Some(file_job) = recalculate_log_job(opened_file, &self.user_settings) {
+                        self.state.log_job = file_job;
+                    }
+                }
+            }
         }
 
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
