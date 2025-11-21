@@ -34,16 +34,28 @@ impl Default for UserSettings {
     }
 }
 
+struct LogalyzerState {
+    vertical_scroll_offset: f32,
+}
+
+impl Default for LogalyzerState {
+    fn default() -> Self {
+        Self {
+            vertical_scroll_offset: 0.0,
+        }
+    }
+}
+
 struct LogalyzerGUI {
     user_settings: UserSettings,
-    vertical_scroll_offset: f32,
+    state: LogalyzerState,
 }
 
 impl Default for LogalyzerGUI {
     fn default() -> Self {
         Self {
             user_settings: UserSettings::default(),
-            vertical_scroll_offset: 0.0,
+            state: LogalyzerState::default(),
         }
     }
 }
@@ -208,7 +220,7 @@ impl eframe::App for LogalyzerGUI {
                 egui::ScrollArea::vertical()
                     .id_salt("line_numbers")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
-                    .vertical_scroll_offset(self.vertical_scroll_offset)
+                    .vertical_scroll_offset(self.state.vertical_scroll_offset)
                     .show(ui, |ui| {
                         ui.label(line_numbers);
                         width_left_after_adding_line_numbers = ui.available_width();
@@ -238,7 +250,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.add(egui::Label::new(job).wrap_mode(egui::TextWrapMode::Wrap));
                     });
 
-                self.vertical_scroll_offset = scroll_area.state.offset.y;
+                self.state.vertical_scroll_offset = scroll_area.state.offset.y;
             });
         });
     }
