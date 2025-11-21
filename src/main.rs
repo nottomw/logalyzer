@@ -108,8 +108,6 @@ impl eframe::App for LogalyzerGUI {
         let bottom_panel_height = available_rect.height() * 0.2;
         let central_panel_height = available_rect.height() - bottom_panel_height;
 
-        let window_width = available_rect.width();
-
         let _bottom_panel = egui::TopBottomPanel::bottom("controls")
             .exact_height(bottom_panel_height)
             .resizable(false)
@@ -194,16 +192,18 @@ impl eframe::App for LogalyzerGUI {
             ui.set_min_height(central_panel_height);
 
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                let mut width_left_after_adding_line_numbers = 0.0;
                 egui::ScrollArea::vertical()
                     .id_salt("line_numbers")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                     .vertical_scroll_offset(self.vertical_scroll_offset)
                     .show(ui, |ui| {
                         ui.label(line_numbers);
+                        width_left_after_adding_line_numbers = ui.available_width();
                     });
 
                 let scroll_area_width_max = if self.wrap_text {
-                    window_width
+                    width_left_after_adding_line_numbers
                 } else {
                     (loaded_file_max_line_chars as f32) * 8.0 + 50.0
                 };
