@@ -64,11 +64,6 @@ impl Default for LogalyzerGUI {
     }
 }
 
-// TODO: lua
-// TODO: stream support
-// TODO: log format colors
-// TODO: tokenizer colors
-
 impl eframe::App for LogalyzerGUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let available_rect = ctx.available_rect();
