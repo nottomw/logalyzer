@@ -106,7 +106,7 @@ fn make_rich_text() -> LayoutJob {
 }
 
 fn load_file(path: String) -> (LayoutJob, Option<OpenedFileMetadata>) {
-    // println!("Loading file: {}", path);
+    println!("Loading file: {}", path);
     let mut job = LayoutJob::default();
 
     let read_result = std::fs::read_to_string(&path);
@@ -214,8 +214,6 @@ impl eframe::App for LogalyzerGUI {
             });
 
         if self.user_settings.file_path.is_some() && !self.state.opened_file.is_some() {
-            // TODO: this loads the file every redraw
-            println!("LOADIHNG FILE!");
             let (file_job, loaded_file_meta) =
                 load_file(self.user_settings.file_path.clone().unwrap());
 
