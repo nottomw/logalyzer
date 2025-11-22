@@ -22,7 +22,7 @@ pub struct UserSettings {
 
 impl Default for UserSettings {
     fn default() -> Self {
-        Self {
+        let mut new_instance = UserSettings {
             wrap_text: true,
             autoscroll: false,
             search_term: String::new(),
@@ -34,8 +34,21 @@ impl Default for UserSettings {
                 pattern: String::from(r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$"),
                 pattern_coloring: String::from("yellow,nocolor,green,nocolor"),
             },
-            token_colors: Vec::new(),
+            token_colors: Vec::with_capacity(20),
+        };
+
+        // Initialize the colors in token_colors to some default values.
+        for i in 0..20 {
+            let color = Color32::from_rgb(
+                (i * 12 % 256) as u8,
+                (i * 34 % 256) as u8,
+                (i * 56 % 256) as u8,
+            );
+
+            new_instance.token_colors.push((String::new(), color));
         }
+
+        new_instance
     }
 }
 

@@ -175,19 +175,16 @@ impl eframe::App for LogalyzerGUI {
                     ui.heading("Token colors");
 
                     egui::Grid::new("tokens_grid").show(ui, |ui| {
-                        for i in 0..10 {
-                            let token_color = if i < self.user_settings.token_colors.len() {
-                                &mut self.user_settings.token_colors[i]
-                            } else {
-                                self.user_settings
-                                    .token_colors
-                                    .push((String::new(), egui::Color32::WHITE));
-                                &mut self.user_settings.token_colors[i]
-                            };
+                        for i in 0..20 {
+                            // TODO: Bold assumption we're in range, good for now
+                            let token_color = &mut self.user_settings.token_colors[i];
 
                             ui.label(format!("#{}:", i + 1));
-                            ui.text_edit_singleline(&mut token_color.0);
-                            ui.label("color here");
+                            ui.add_sized(
+                                [100.0, 20.0],
+                                egui::TextEdit::singleline(&mut token_color.0),
+                            );
+                            ui.color_edit_button_srgba(&mut token_color.1);
                             ui.end_row();
                         }
                     });
