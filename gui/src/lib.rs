@@ -19,6 +19,7 @@ struct LogalyzerState {
     opened_file: Option<OpenedFileMetadata>,
     log_job: LayoutJob,
     win_log_format_open: bool,
+    panel_token_colors_open: bool,
 }
 
 impl Default for LogalyzerState {
@@ -28,6 +29,7 @@ impl Default for LogalyzerState {
             opened_file: None,
             log_job: default_log_content(),
             win_log_format_open: false,
+            panel_token_colors_open: false,
         }
     }
 }
@@ -129,7 +131,7 @@ impl eframe::App for LogalyzerGUI {
 
                     let button_rules = ui.button("Token Rules");
                     if button_rules.clicked() {
-                        println!("not implemented");
+                        self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
                     }
 
                     let button_save_config = ui.button("Save config");
@@ -164,6 +166,45 @@ impl eframe::App for LogalyzerGUI {
                     });
                 });
             });
+
+        if self.state.panel_token_colors_open {
+            egui::SidePanel::new(egui::panel::Side::Right, "tokens")
+                .resizable(false)
+                .default_width(200.0)
+                .show(ctx, |ui| {
+                    ui.heading("Token colors");
+
+                    egui::Grid::new("tokens_grid").show(ui, |ui| {
+                        for i in 0..10 {
+                            let token_color = if i < self.user_settings.token_colors.len() {
+                                &mut self.user_settings.token_colors[i]
+                            } else {
+                                self.user_settings
+                                    .token_colors
+                                    .push((String::new(), egui::Color32::WHITE));
+                                &mut self.user_settings.token_colors[i]
+                            };
+
+                            ui.label(format!("#{}:", i + 1));
+                            ui.text_edit_singleline(&mut token_color.0);
+                            ui.label("color here");
+                            ui.end_row();
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        let button_apply = ui.button("Apply");
+                        if button_apply.clicked() {
+                            println!("Apply token colors not implemented yet");
+                        }
+
+                        let button_close = ui.button("Close");
+                        if button_close.clicked() {
+                            self.state.panel_token_colors_open = false;
+                        }
+                    });
+                });
+        }
 
         // TODO: log job recalc should be offloaded to a separate thread
         if self.user_settings.file_path.is_empty() == false {

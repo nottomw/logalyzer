@@ -17,6 +17,7 @@ pub struct UserSettings {
     pub filter_term: String,
     pub file_path: String,
     pub log_format: LogFormat,
+    pub token_colors: Vec<(String, Color32)>,
 }
 
 impl Default for UserSettings {
@@ -33,6 +34,7 @@ impl Default for UserSettings {
                 pattern: String::from(r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$"),
                 pattern_coloring: String::from("yellow,nocolor,green,nocolor"),
             },
+            token_colors: Vec::new(),
         }
     }
 }
