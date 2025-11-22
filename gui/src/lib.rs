@@ -4,7 +4,11 @@ use egui::text::{LayoutJob, TextWrapping};
 use log_engine::*;
 
 pub fn run_gui() {
-    let options = eframe::NativeOptions::default();
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size([1200.0, 800.0]),
+        ..Default::default()
+    };
+
     let _run_result = eframe::run_native(
         "Logalyzer",
         options,
