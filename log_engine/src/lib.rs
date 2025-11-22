@@ -5,8 +5,8 @@ use egui::{
 
 #[derive(PartialEq, Clone)]
 pub struct LogFormat {
-    pub pattern: String,          // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
-    pub pattern_coloring: String, // coloring for each regex group (i.e. "yellow,green,nocolor")
+    pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
+    pub pattern_coloring: Vec<egui::Color32>, // coloring for each regex group (i.e. "yellow,green,nocolor")
 }
 
 #[derive(PartialEq, Clone)]
@@ -42,7 +42,12 @@ impl Default for UserSettings {
                 // TODO: For now a hardcoded pattern for tests.
                 // Line example: [    0.000000] Linux version 6.8.0-57-generic (buildd@lcy02-amd64-040) (x86_64-linux-gnu-
                 pattern: String::from(r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$"),
-                pattern_coloring: String::from("yellow,nocolor,green,nocolor"),
+                pattern_coloring: vec![
+                    Color32::YELLOW,
+                    Color32::TRANSPARENT,
+                    Color32::YELLOW,
+                    Color32::TRANSPARENT,
+                ],
             },
             token_colors: Vec::with_capacity(20),
         };
@@ -138,26 +143,20 @@ pub fn load_file(path: &String) -> (LayoutJob, Option<OpenedFileMetadata>) {
     (job, Some(opened_file_meta))
 }
 
-fn color_name_to_text_format(color_name: &str) -> TextFormat {
+fn color_to_text_format(color_name: egui::Color32) -> TextFormat {
     let mut text_format = TextFormat::default();
     text_format.font_id = FontId::monospace(12.0);
 
-    match color_name {
-        "red" => {
-            text_format.background = Color32::RED;
-            text_format.color = Color32::BLACK;
-        }
-        "green" => {
-            text_format.background = Color32::GREEN;
-            text_format.color = Color32::BLACK;
-        }
-        "yellow" => {
-            text_format.background = Color32::YELLOW;
-            text_format.color = Color32::BLACK;
-        }
-        "nocolor" => {} // No background color
-        _ => {}         // Unknown color, keep default
-    };
+    text_format.background = color_name;
+
+    // Ensure the text color is visible on the background.
+    // If it's bright, make the color black, else white.
+    text_format.color =
+        if (color_name.r() as u32 + color_name.g() as u32 + color_name.b() as u32) / 3 > 128 {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        };
 
     text_format
 }
@@ -170,7 +169,6 @@ pub fn recalculate_log_job(
 
     let mut feature_log_format = false;
     let mut feature_log_format_regex: regex::Regex = regex::Regex::new("").unwrap();
-    let mut feature_log_format_coloring_pattern_split: Vec<&str> = Vec::new();
 
     if !user_settings.log_format.pattern.is_empty()
         && !user_settings.log_format.pattern_coloring.is_empty()
@@ -186,10 +184,6 @@ pub fn recalculate_log_job(
         } else {
             feature_log_format = true;
             feature_log_format_regex = feature_log_format_regex_result.unwrap();
-            feature_log_format_coloring_pattern_split = log_format
-                .pattern_coloring
-                .split(',')
-                .collect::<Vec<&str>>();
         }
     }
 
@@ -210,7 +204,7 @@ pub fn recalculate_log_job(
 
             // Verify the number of captures match the number of coloring pattern.
             let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
-            if actual_group_count != feature_log_format_coloring_pattern_split.len() {
+            if actual_group_count != user_settings.log_format.pattern_coloring.len() {
                 let text_format = TextFormat {
                     font_id: FontId::monospace(12.0),
                     ..Default::default()
@@ -228,8 +222,8 @@ pub fn recalculate_log_job(
                 }
 
                 let group_str = group.unwrap().as_str();
-                let coloring_str = feature_log_format_coloring_pattern_split[i - 1];
-                let text_format = color_name_to_text_format(coloring_str);
+                let group_str_coloring = user_settings.log_format.pattern_coloring[i - 1];
+                let text_format = color_to_text_format(group_str_coloring);
 
                 // If this is the last matching group, append a newline.
                 if i == line_matched_groups.len() - 1 {

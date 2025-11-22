@@ -8,3 +8,4 @@ eframe = "0.33.2"
 egui = "0.33.2"
 rfd = "0.15.4"
 log_engine = { path = "../log_engine" }
+regex = "1.12.2"

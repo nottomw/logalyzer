@@ -95,7 +95,10 @@ impl eframe::App for LogalyzerGUI {
                                                 The coloring rule is a comma-separated list of colors.");
 
                                     // TODO: this should also maybe show some list of pre-defined regexes for some known formats
+                                    // TODO: colors should be chosen by color-picker, the amount of color pickers should be dependend on amount of capture groups in regex
                                     // TODO: or maybe should not be a regex at all
+
+                                    let mut compiled_regex_valid = false;
 
                                     egui::Grid::new("log_format_grid")
                                         .show(ui, |ui|{
@@ -106,22 +109,48 @@ impl eframe::App for LogalyzerGUI {
                                             );
                                             ui.end_row();
 
-                                            ui.label("Coloring Rules:");
-                                            ui.add_sized(
-                                                [400.0, 20.0],
-                                                egui::TextEdit::singleline(&mut self.user_settings_staging.log_format.pattern_coloring),
-                                            );
-                                            ui.end_row();
+                                            let compiled_regex = regex::Regex::new(&self.user_settings_staging.log_format.pattern);
+                                            compiled_regex_valid = compiled_regex.is_ok();
+                                            if !compiled_regex_valid {
+                                                ui.colored_label(egui::Color32::RED, "Invalid regex pattern");
+                                                ui.end_row();
+                                            } else {
+                                                ui.colored_label(egui::Color32::GREEN, "Regex valid");
+                                                ui.end_row();
+
+                                                let regex = compiled_regex.unwrap();
+                                                let capture_group_count = regex.captures_len() - 1;
+
+                                                for i in 0..capture_group_count {
+                                                    ui.label(format!("Group #{} Color:", i+1));
+
+                                                    self.user_settings_staging.log_format.pattern_coloring.resize(
+                                                        capture_group_count,
+                                                        egui::Color32::RED,
+                                                    );
+
+                                                    ui.color_edit_button_srgba(
+                                                        &mut self.user_settings_staging.log_format.pattern_coloring[i]
+                                                    );
+                                                    ui.end_row();
+                                                }
+                                            }
                                         });
 
                                         ui.horizontal(|ui|{
-                                            let button_ok = ui.button("OK");
+                                            let button_ok = ui.add_enabled(
+                                                compiled_regex_valid,
+                                                egui::Button::new("OK")
+                                            );
                                             if button_ok.clicked() {
                                                 self.state.win_log_format_open = false;
                                                 self.user_settings.log_format = self.user_settings_staging.log_format.clone();
                                             }
 
-                                            let button_apply = ui.button("Apply");
+                                            let button_apply = ui.add_enabled(
+                                                compiled_regex_valid,
+                                                egui::Button::new("Apply")
+                                            );
                                             if button_apply.clicked() {
                                                 self.user_settings.log_format = self.user_settings_staging.log_format.clone();
                                             }
