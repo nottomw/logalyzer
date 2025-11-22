@@ -204,6 +204,8 @@ impl eframe::App for LogalyzerGUI {
                         .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                         .vertical_scroll_offset(self.state.vertical_scroll_offset)
                         .show(ui, |ui| {
+                            ui.set_min_height(ui.available_height());
+
                             ui.label(line_numbers);
                             width_left_after_adding_line_numbers = ui.available_width();
                         });
@@ -220,6 +222,8 @@ impl eframe::App for LogalyzerGUI {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_width(scroll_area_width_max)
                     .show(ui, |ui| {
+                        ui.set_min_height(ui.available_height());
+
                         let mut text_wrapping = TextWrapping::default();
                         if self.user_settings.wrap_text {
                             text_wrapping.break_anywhere = true;
