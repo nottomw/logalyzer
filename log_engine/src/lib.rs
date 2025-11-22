@@ -3,7 +3,7 @@ use egui::{
     text::{LayoutJob, TextFormat},
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Default)]
 pub struct LogFormat {
     pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
     pub pattern_coloring: Vec<egui::Color32>, // coloring for each regex group (i.e. "yellow,green,nocolor")
@@ -38,17 +38,7 @@ impl Default for UserSettings {
             filter_whole_word: false,
             filter_negative: false,
             file_path: String::new(),
-            log_format: LogFormat {
-                // TODO: For now a hardcoded pattern for tests.
-                // Line example: [    0.000000] Linux version 6.8.0-57-generic (buildd@lcy02-amd64-040) (x86_64-linux-gnu-
-                pattern: String::from(r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$"),
-                pattern_coloring: vec![
-                    Color32::YELLOW,
-                    Color32::TRANSPARENT,
-                    Color32::YELLOW,
-                    Color32::TRANSPARENT,
-                ],
-            },
+            log_format: LogFormat::default(),
             token_colors: Vec::with_capacity(20),
         };
 
@@ -233,6 +223,13 @@ pub fn recalculate_log_job(
 
                 job.append(group_str, 0.0, text_format);
             }
+        } else {
+            let text_format = TextFormat {
+                font_id: FontId::monospace(12.0),
+                ..Default::default()
+            };
+
+            job.append(&format!("{}\n", line), 0.0, text_format);
         }
     }
 
