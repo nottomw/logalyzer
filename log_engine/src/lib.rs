@@ -28,7 +28,7 @@ pub struct UserSettings {
 impl Default for UserSettings {
     fn default() -> Self {
         let mut new_instance = UserSettings {
-            wrap_text: true,
+            wrap_text: false,
             autoscroll: false,
             search_term: String::new(),
             search_match_case: false,
@@ -58,6 +58,7 @@ impl Default for UserSettings {
 }
 
 pub struct OpenedFileMetadata {
+    pub path: String,
     pub content: String,
     pub content_max_line_chars: usize,
     pub content_line_count: usize,
@@ -66,6 +67,7 @@ pub struct OpenedFileMetadata {
 impl Default for OpenedFileMetadata {
     fn default() -> Self {
         Self {
+            path: String::new(),
             content: String::new(),
             content_max_line_chars: 0,
             content_line_count: 0,
@@ -76,23 +78,15 @@ impl Default for OpenedFileMetadata {
 pub fn default_log_content() -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    job.append("This is some ", 0.0, TextFormat::default());
+    let welcome_message = "Please select a log file or a stream to open.";
 
     job.append(
-        "highlighted ",
+        welcome_message,
         0.0,
         TextFormat {
-            background: Color32::YELLOW,
-            font_id: FontId::default(),
-            color: Color32::BLACK,
+            font_id: FontId::monospace(12.0),
             ..Default::default()
         },
-    );
-
-    job.append(
-        "text with different background colors.",
-        0.0,
-        TextFormat::default(),
     );
 
     job
@@ -122,6 +116,7 @@ pub fn load_file(path: &String) -> (LayoutJob, Option<OpenedFileMetadata>) {
     job.append(&file_content, 0.0, text_format);
 
     let mut opened_file_meta = OpenedFileMetadata::default();
+    opened_file_meta.path = path.clone();
     opened_file_meta.content = file_content.clone();
     opened_file_meta.content_max_line_chars = file_content
         .lines()

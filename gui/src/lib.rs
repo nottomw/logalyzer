@@ -218,8 +218,16 @@ impl eframe::App for LogalyzerGUI {
                         self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
                     }
 
-                    let button_histogram = ui.button("Histogram");
+                    let file_opened = self.state.opened_file.is_some();
+
+                    let button_histogram =
+                        ui.add_enabled(file_opened, egui::Button::new("Histogram"));
                     if button_histogram.clicked() {
+                        println!("not implemented");
+                    }
+
+                    let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
+                    if button_stats.clicked() {
                         println!("not implemented");
                     }
 
@@ -233,8 +241,15 @@ impl eframe::App for LogalyzerGUI {
                         println!("not implemented");
                     }
 
-                    ui.checkbox(&mut self.user_settings.wrap_text, "Wrap");
-                    ui.checkbox(&mut self.user_settings.autoscroll, "Autoscroll");
+                    ui.add_enabled(
+                        file_opened,
+                        egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
+                    );
+
+                    ui.add_enabled(
+                        file_opened,
+                        egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
+                    );
                 });
 
                 ui.horizontal(|ui| {
@@ -299,7 +314,10 @@ impl eframe::App for LogalyzerGUI {
 
         // TODO: log job recalc should be offloaded to a separate thread
         if self.user_settings.file_path.is_empty() == false {
-            if !self.state.opened_file.is_some() {
+            if !self.state.opened_file.is_some()
+                || self.state.opened_file.as_ref().unwrap().path != self.user_settings.file_path
+            {
+                // Reload file if it was requested, or the path has changed.
                 let (file_job, loaded_file_meta) = load_file(&self.user_settings.file_path);
 
                 self.state.log_job = file_job.clone();
