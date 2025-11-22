@@ -54,7 +54,7 @@ impl eframe::App for LogalyzerGUI {
         let central_panel_height = available_rect.height() - bottom_panel_height;
 
         let _bottom_panel = egui::TopBottomPanel::bottom("controls")
-            .exact_height(bottom_panel_height)
+            .max_height(bottom_panel_height)
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
