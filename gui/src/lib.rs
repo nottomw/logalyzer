@@ -136,6 +136,11 @@ impl eframe::App for LogalyzerGUI {
                         self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
                     }
 
+                    let button_histogram = ui.button("Histogram");
+                    if button_histogram.clicked() {
+                        println!("not implemented");
+                    }
+
                     let button_save_config = ui.button("Save config");
                     if button_save_config.clicked() {
                         println!("not implemented");
@@ -157,6 +162,8 @@ impl eframe::App for LogalyzerGUI {
                             [300.0, 20.0],
                             egui::TextEdit::singleline(&mut self.user_settings.search_term),
                         );
+                        ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
+                        ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
                         ui.end_row();
 
                         ui.label("Filter:");
@@ -164,6 +171,9 @@ impl eframe::App for LogalyzerGUI {
                             [300.0, 20.0],
                             egui::TextEdit::singleline(&mut self.user_settings.filter_term),
                         );
+                        ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
+                        ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
+                        ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
                         ui.end_row();
                     });
                 });
