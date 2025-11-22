@@ -16,7 +16,7 @@ pub struct UserSettings {
     pub search_term: String,
     pub filter_term: String,
     pub file_path: String,
-    pub log_format: Option<LogFormat>,
+    pub log_format: LogFormat,
 }
 
 impl Default for UserSettings {
@@ -27,12 +27,12 @@ impl Default for UserSettings {
             search_term: String::new(),
             filter_term: String::new(),
             file_path: String::new(),
-            log_format: Some(LogFormat {
+            log_format: LogFormat {
                 // TODO: For now a hardcoded pattern for tests.
                 // Line example: [    0.000000] Linux version 6.8.0-57-generic (buildd@lcy02-amd64-040) (x86_64-linux-gnu-
                 pattern: String::from(r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$"),
                 pattern_coloring: String::from("yellow,nocolor,green,nocolor"),
-            }),
+            },
         }
     }
 }
@@ -146,23 +146,26 @@ pub fn recalculate_log_job(
     let mut feature_log_format = false;
     let mut feature_log_format_regex: regex::Regex = regex::Regex::new("").unwrap();
     let mut feature_log_format_coloring_pattern_split: Vec<&str> = Vec::new();
-    if user_settings.log_format.is_some() {
-        let log_format = user_settings.log_format.as_ref().unwrap();
-        assert!(
-            !log_format.pattern.is_empty(),
-            "Log format pattern is empty"
-        );
-        assert!(
-            !log_format.pattern_coloring.is_empty(),
-            "Log format pattern coloring is empty"
-        );
 
-        feature_log_format = true;
-        feature_log_format_regex = regex::Regex::new(&log_format.pattern).unwrap();
-        feature_log_format_coloring_pattern_split = log_format
-            .pattern_coloring
-            .split(',')
-            .collect::<Vec<&str>>();
+    if !user_settings.log_format.pattern.is_empty()
+        && !user_settings.log_format.pattern_coloring.is_empty()
+    {
+        let log_format = &user_settings.log_format;
+
+        let feature_log_format_regex_result = regex::Regex::new(&log_format.pattern);
+        if feature_log_format_regex_result.is_err() {
+            println!(
+                "Invalid regex pattern for log formatting: {}",
+                log_format.pattern
+            );
+        } else {
+            feature_log_format = true;
+            feature_log_format_regex = feature_log_format_regex_result.unwrap();
+            feature_log_format_coloring_pattern_split = log_format
+                .pattern_coloring
+                .split(',')
+                .collect::<Vec<&str>>();
+        }
     }
 
     for line in opened_file.content.lines() {
@@ -179,9 +182,9 @@ pub fn recalculate_log_job(
             }
 
             let line_matched_groups = line_matched_groups.unwrap();
-            let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
 
             // Verify the number of captures match the number of coloring pattern.
+            let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
             if actual_group_count != feature_log_format_coloring_pattern_split.len() {
                 let text_format = TextFormat {
                     font_id: FontId::monospace(12.0),

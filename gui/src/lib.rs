@@ -18,6 +18,7 @@ struct LogalyzerState {
     vertical_scroll_offset: f32,
     opened_file: Option<OpenedFileMetadata>,
     log_job: LayoutJob,
+    win_log_format_open: bool,
 }
 
 impl Default for LogalyzerState {
@@ -26,6 +27,7 @@ impl Default for LogalyzerState {
             vertical_scroll_offset: 0.0,
             opened_file: None,
             log_job: default_log_content(),
+            win_log_format_open: false,
         }
     }
 }
@@ -33,6 +35,7 @@ impl Default for LogalyzerState {
 struct LogalyzerGUI {
     user_settings: UserSettings,
     user_settings_cached: UserSettings,
+    user_settings_staging: UserSettings, // for editing, after OK is pressed this is copied to user_settings
     state: LogalyzerState,
 }
 
@@ -41,6 +44,7 @@ impl Default for LogalyzerGUI {
         Self {
             user_settings: UserSettings::default(),
             user_settings_cached: UserSettings::default(),
+            user_settings_staging: UserSettings::default(),
             state: LogalyzerState::default(),
         }
     }
@@ -68,27 +72,74 @@ impl eframe::App for LogalyzerGUI {
 
                     let button_remote = ui.button("Open Stream");
                     if button_remote.clicked() {
-                        println!("Open stream button clicked");
+                        println!("not implemented");
                     }
 
                     let button_log_format = ui.button("Log Format");
                     if button_log_format.clicked() {
-                        println!("Log Format button clicked");
+                        self.state.win_log_format_open = true;
+                    }
+
+                    if self.state.win_log_format_open {
+                        egui::Window::new("Log Format")
+                            // .open(&mut self.state.win_log_format_open)
+                            .auto_sized()
+                            .show(ctx, |ui| {
+                                ui.vertical(|ui| {
+                                    ui.label("Please provide the log format regular expression and coloring rules.\n\
+                                                The coloring rule is a comma-separated list of colors.");
+
+                                    egui::Grid::new("log_format_grid")
+                                        .show(ui, |ui|{
+                                            ui.label("Log Format Regex:");
+                                            ui.add_sized(
+                                                [400.0, 20.0],
+                                                egui::TextEdit::singleline(&mut self.user_settings_staging.log_format.pattern),
+                                            );
+                                            ui.end_row();
+
+                                            ui.label("Coloring Rules:");
+                                            ui.add_sized(
+                                                [400.0, 20.0],
+                                                egui::TextEdit::singleline(&mut self.user_settings_staging.log_format.pattern_coloring),
+                                            );
+                                            ui.end_row();
+                                        });
+
+                                        ui.horizontal(|ui|{
+                                            let button_ok = ui.button("OK");
+                                            if button_ok.clicked() {
+                                                self.state.win_log_format_open = false;
+                                                self.user_settings.log_format = self.user_settings_staging.log_format.clone();
+                                            }
+
+                                            let button_apply = ui.button("Apply");
+                                            if button_apply.clicked() {
+                                                self.user_settings.log_format = self.user_settings_staging.log_format.clone();
+                                            }
+
+                                            let button_cancel = ui.button("Cancel");
+                                            if button_cancel.clicked() {
+                                                self.state.win_log_format_open = false;
+                                            }
+                                        });
+                                });
+                            });
                     }
 
                     let button_rules = ui.button("Token Rules");
                     if button_rules.clicked() {
-                        println!("Token rules button clicked");
+                        println!("not implemented");
                     }
 
                     let button_save_config = ui.button("Save config");
                     if button_save_config.clicked() {
-                        println!("Save config button clicked");
+                        println!("not implemented");
                     }
 
                     let button_load_config = ui.button("Load config");
                     if button_load_config.clicked() {
-                        println!("Load config button clicked");
+                        println!("not implemented");
                     }
 
                     ui.checkbox(&mut self.user_settings.wrap_text, "Wrap");
