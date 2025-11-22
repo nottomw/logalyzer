@@ -84,12 +84,14 @@ impl eframe::App for LogalyzerGUI {
 
                     if self.state.win_log_format_open {
                         egui::Window::new("Log Format")
-                            // .open(&mut self.state.win_log_format_open)
                             .auto_sized()
                             .show(ctx, |ui| {
                                 ui.vertical(|ui| {
                                     ui.label("Please provide the log format regular expression and coloring rules.\n\
                                                 The coloring rule is a comma-separated list of colors.");
+
+                                    // TODO: this should also maybe show some list of pre-defined regexes for some known formats
+                                    // TODO: or maybe should not be a regex at all
 
                                     egui::Grid::new("log_format_grid")
                                         .show(ui, |ui|{
