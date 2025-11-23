@@ -122,7 +122,6 @@ pub fn recalculate_log_job(
                 job.append(&part_str, 0.0, part_format);
             }
         } else {
-            println!("DBG: no line handlers append");
             job.append(
                 &format!("{}\n", line),
                 0.0,

@@ -95,12 +95,6 @@ impl LineHandler for LogFormatLineHandler {
             let group_str_coloring = self.pattern_coloring[i - 1];
             let text_format = color_to_text_format(group_str_coloring, self.default_font.clone());
 
-            // // If this is the last matching group, append a newline.
-            // if i == line_matched_groups.len() - 1 {
-            //     line_result.push((format!("{}\n", group_str), text_format));
-            //     continue;
-            // }
-
             line_result.push((group_str.to_string(), text_format));
         }
 
