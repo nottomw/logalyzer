@@ -156,10 +156,7 @@ impl eframe::App for LogalyzerGUI {
                                         );
                                         compiled_regex_valid = compiled_regex.is_ok();
                                         if !compiled_regex_valid {
-                                            ui.colored_label(
-                                                egui::Color32::RED,
-                                                "Invalid regex pattern",
-                                            );
+                                            ui.colored_label(egui::Color32::RED, "Regex invalid");
                                             ui.end_row();
                                         } else {
                                             ui.colored_label(egui::Color32::GREEN, "Regex valid");
@@ -346,6 +343,8 @@ impl eframe::App for LogalyzerGUI {
                 }
             }
         }
+
+        // TODO: keyboard shortcuts for scrolling down/up/right/left maybe?
 
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_height(central_panel_height);
