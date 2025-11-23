@@ -12,13 +12,15 @@ pub fn run_gui() {
         ..Default::default()
     };
 
-    let _run_result = eframe::run_native(
+    let run_result = eframe::run_native(
         "Logalyzer",
         options,
         Box::new(|_cc| Ok(Box::new(LogalyzerGUI::default()) as Box<dyn eframe::App>)),
     );
 
-    // TODO: return error code
+    if run_result.is_err() {
+        println!("Error running GUI: {:?}", run_result.err());
+    }
 }
 
 struct LogalyzerState {
@@ -287,8 +289,7 @@ impl eframe::App for LogalyzerGUI {
                     ui.heading("Token colors");
 
                     egui::Grid::new("tokens_grid").show(ui, |ui| {
-                        for i in 0..20 {
-                            // TODO: Bold assumption we're in range, good for now
+                        for i in 0..self.user_settings_staging.token_colors.capacity() {
                             let token_color = &mut self.user_settings_staging.token_colors[i];
 
                             ui.label(format!("#{}:", i + 1));

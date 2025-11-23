@@ -37,12 +37,12 @@ impl Default for UserSettings {
             filter_negative: false,
             file_path: String::new(),
             log_format: LogFormat::default(),
-            token_colors: Vec::with_capacity(20),
+            token_colors: Vec::with_capacity(25),
             font: FontId::monospace(12.0),
         };
 
         // Initialize the colors in token_colors to some default values.
-        for i in 0..20 {
+        for i in 0..new_instance.token_colors.capacity() {
             let color = Color32::from_rgb(
                 (i * 12 % 256) as u8,
                 (i * 34 % 256) as u8,
