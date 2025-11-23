@@ -1,3 +1,5 @@
+use core::f32;
+
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
@@ -362,7 +364,14 @@ impl eframe::App for LogalyzerGUI {
                         .show(ui, |ui| {
                             ui.set_min_height(ui.available_height());
 
-                            ui.label(line_numbers);
+                            let layout_job_numbers = LayoutJob::simple_format(
+                                line_numbers,
+                                egui::TextFormat {
+                                    font_id: self.user_settings.font.clone(),
+                                    ..Default::default()
+                                },
+                            );
+                            ui.label(layout_job_numbers);
                             width_left_after_adding_line_numbers = ui.available_width();
                         });
 
