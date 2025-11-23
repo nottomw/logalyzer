@@ -1,4 +1,9 @@
-trait LineHandler {
+use egui::text::TextFormat;
+use egui::{Color32, FontId};
+
+use crate::user_settings::UserSettings;
+
+pub trait LineHandler {
     fn is_active(&self) -> bool;
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>);
 }
@@ -21,8 +26,10 @@ fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
     text_format
 }
 
-struct LogFormatLineHandler {
+pub struct LogFormatLineHandler {
     compiled_log_format_regex: regex::Regex,
+    pattern_coloring: Vec<Color32>,
+    default_font: FontId,
 }
 
 impl LogFormatLineHandler {
@@ -39,19 +46,20 @@ impl LogFormatLineHandler {
         }
 
         Some(Self {
-            compiled_log_format_regex: regex::Regex::new(&user_settings.log_format.pattern)
-                .unwrap(),
+            compiled_log_format_regex: compiled_regex.unwrap(),
+            pattern_coloring: user_settings.log_format.pattern_coloring.clone(),
+            default_font: user_settings.font.clone(),
         })
     }
 }
 
 impl LineHandler for LogFormatLineHandler {
     fn is_active(&self) -> bool {
-        if compiled_log_format_regex.is_valid() {
-            return true;
+        if self.pattern_coloring.is_empty() || self.compiled_log_format_regex.as_str().is_empty() {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
@@ -61,7 +69,7 @@ impl LineHandler for LogFormatLineHandler {
         let line_full = &line[0].0;
 
         // If nothing matched do nothing.
-        let line_matched_groups_res = feature_log_format_regex.captures(line_full);
+        let line_matched_groups_res = self.compiled_log_format_regex.captures(line_full);
         if line_matched_groups_res.is_none() {
             return;
         }
@@ -70,7 +78,7 @@ impl LineHandler for LogFormatLineHandler {
 
         // Verify the number of captures match the number of coloring pattern.
         let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
-        if actual_group_count != user_settings.log_format.pattern_coloring.len() {
+        if actual_group_count != self.pattern_coloring.len() {
             return;
         }
 
@@ -80,18 +88,18 @@ impl LineHandler for LogFormatLineHandler {
         for (i, group) in line_matched_groups.iter().enumerate() {
             // Skip first group which is always a full match.
             if group.is_none() || i == 0 {
-                return;
+                continue;
             }
 
             let group_str = group.unwrap().as_str();
-            let group_str_coloring = user_settings.log_format.pattern_coloring[i - 1];
-            let text_format = color_to_text_format(group_str_coloring, user_settings.font);
+            let group_str_coloring = self.pattern_coloring[i - 1];
+            let text_format = color_to_text_format(group_str_coloring, self.default_font.clone());
 
-            // If this is the last matching group, append a newline.
-            if i == line_matched_groups.len() - 1 {
-                line_result.push((format!("{}\n", group_str), text_format));
-                return;
-            }
+            // // If this is the last matching group, append a newline.
+            // if i == line_matched_groups.len() - 1 {
+            //     line_result.push((format!("{}\n", group_str), text_format));
+            //     continue;
+            // }
 
             line_result.push((group_str.to_string(), text_format));
         }
@@ -100,7 +108,7 @@ impl LineHandler for LogFormatLineHandler {
     }
 }
 
-struct TokenHilightLineHandler {
+pub struct TokenHilightLineHandler {
     token_colors: Vec<(String, Color32)>,
     default_format: TextFormat,
 }
@@ -111,7 +119,7 @@ impl TokenHilightLineHandler {
             return None;
         }
 
-        let mut token_colors = user_settings.token_colors;
+        let mut token_colors = user_settings.token_colors.clone();
 
         // Remove all empty or whitespace-only tokens so we don't have to iterate over them later.
         token_colors
@@ -120,14 +128,14 @@ impl TokenHilightLineHandler {
         Some(Self {
             token_colors: token_colors,
             default_format: TextFormat {
-                font_id: user_settings.font,
+                font_id: user_settings.font.clone(),
                 ..Default::default()
             },
         })
     }
 }
 
-impl LineHandler for LogFormatLineHandler {
+impl LineHandler for TokenHilightLineHandler {
     fn is_active(&self) -> bool {
         if !self.token_colors.is_empty() {
             return true;
@@ -149,12 +157,13 @@ impl LineHandler for LogFormatLineHandler {
                     if pos > 0 {
                         line_result.push((
                             part_str[start..start + pos].to_string(),
-                            self.default_format,
+                            self.default_format.clone(),
                         ));
                     }
 
                     // Append the token with the highlight color.
-                    let highlight_format = color_to_text_format(*color, part_format.font_id);
+                    let highlight_format =
+                        color_to_text_format(*color, part_format.font_id.clone());
                     line_result.push((token.to_string(), highlight_format));
 
                     start += pos + token.len();
@@ -162,11 +171,11 @@ impl LineHandler for LogFormatLineHandler {
 
                 // Append any remaining text after the last token.
                 if start < part_str.len() {
-                    line_result.push((part_str[start..].to_string(), self.default_format));
+                    line_result.push((part_str[start..].to_string(), self.default_format.clone()));
                 }
             }
         }
 
-        return line_result;
+        *line = line_result;
     }
 }

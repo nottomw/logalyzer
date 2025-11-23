@@ -1,3 +1,11 @@
+use egui::{Color32, FontId};
+
+#[derive(PartialEq, Clone, Default)]
+pub struct LogFormat {
+    pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
+    pub pattern_coloring: Vec<egui::Color32>,
+}
+
 #[derive(PartialEq, Clone)]
 pub struct UserSettings {
     pub wrap_text: bool,

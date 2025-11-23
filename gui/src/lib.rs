@@ -1,6 +1,7 @@
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
+use log_engine::user_settings::UserSettings;
 use log_engine::*;
 
 pub fn run_gui() {

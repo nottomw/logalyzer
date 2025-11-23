@@ -1,17 +1,13 @@
 use egui::{
-    Color32, FontId,
-    epaint::tessellator::path,
+    FontId,
     text::{LayoutJob, TextFormat},
 };
 
 mod line_handlers;
-mod user_settings;
+pub mod user_settings;
 
-#[derive(PartialEq, Clone, Default)]
-pub struct LogFormat {
-    pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
-    pub pattern_coloring: Vec<egui::Color32>,
-}
+use crate::line_handlers::*;
+use crate::user_settings::*;
 
 pub struct OpenedFileMetadata {
     pub path: String,
@@ -63,16 +59,18 @@ pub fn load_file(user_settings: &UserSettings) -> Option<OpenedFileMetadata> {
     }
 
     let file_content = read_result.unwrap();
-
-    let mut opened_file_meta = OpenedFileMetadata::default();
-    opened_file_meta.path = path.clone();
-    opened_file_meta.content = file_content;
-    opened_file_meta.content_max_line_chars = file_content
+    let file_content_max_line_chars = file_content
         .lines()
         .map(|line| line.len())
         .max()
         .unwrap_or(0);
-    opened_file_meta.content_line_count = file_content.lines().count();
+    let file_content_line_count = file_content.lines().count();
+
+    let mut opened_file_meta = OpenedFileMetadata::default();
+    opened_file_meta.path = path.clone();
+    opened_file_meta.content = file_content;
+    opened_file_meta.content_max_line_chars = file_content_max_line_chars;
+    opened_file_meta.content_line_count = file_content_line_count;
 
     Some(opened_file_meta)
 }
@@ -81,23 +79,24 @@ pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
     user_settings: &UserSettings,
 ) -> Option<LayoutJob> {
-    let text_format_default = TextFormat {
-        font_id: user_settings.font,
-        ..Default::default()
-    };
-
     let mut job = LayoutJob::default();
 
     let log_format_line_handler = LogFormatLineHandler::new(user_settings);
+
+    // TODO: use this
     let token_hilight_line_handler = TokenHilightLineHandler::new(user_settings);
 
-    let handlers: Vec<Option<LineHandler>> =
-        vec![log_format_line_handler, token_hilight_line_handler];
+    let handlers: Vec<Option<LogFormatLineHandler>> = vec![log_format_line_handler];
 
     for line in opened_file.content.lines() {
         if !handlers.is_empty() {
-            let mut line_parts: Vec<(String, TextFormat)> =
-                vec![(line.to_string(), text_format_default)];
+            let mut line_parts: Vec<(String, TextFormat)> = vec![(
+                line.to_string(),
+                TextFormat {
+                    font_id: user_settings.font.clone(),
+                    ..Default::default()
+                },
+            )];
 
             for handler_opt in &handlers {
                 if handler_opt.is_none() {
@@ -112,11 +111,26 @@ pub fn recalculate_log_job(
                 handler.process_line(&mut line_parts);
             }
 
+            // Add newline to the last line part if it's not already there.
+            let line_parts_len = line_parts.len();
+            let ends_with_newline = line_parts[line_parts_len - 1].0.ends_with("\n");
+            if !ends_with_newline {
+                line_parts[line_parts_len - 1].0 += "\n";
+            }
+
             for (part_str, part_format) in line_parts {
                 job.append(&part_str, 0.0, part_format);
             }
         } else {
-            job.append(&format!("{}\n", line), 0.0, text_format_default);
+            println!("DBG: no line handlers append");
+            job.append(
+                &format!("{}\n", line),
+                0.0,
+                TextFormat {
+                    font_id: user_settings.font.clone(),
+                    ..Default::default()
+                },
+            );
         }
     }
 
