@@ -142,89 +142,127 @@ fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
     text_format
 }
 
-// TODO: split this into smaller chunks for each feature - tokens and log format, in future
-// maybe lua scripts. Each line should be fed to the feature and a "common" line should be added to
-// LayoutJob.
+trait LineHandler {
+    fn is_active(&self) -> bool;
+    fn process_line(&self, line: &mut Vec<(String, TextFormat)>);
+}
+
+struct LogFormatLineHandler {
+    compiled_log_format_regex: regex::Regex,
+}
+
+impl LogFormatLineHandler {
+    pub fn new(user_settings: &UserSettings) -> Option<Self> {
+        if user_settings.log_format.pattern.is_empty()
+            || user_settings.log_format.pattern_coloring.is_empty()
+        {
+            return None;
+        }
+
+        let compiled_regex = regex::Regex::new(&user_settings.log_format.pattern);
+        if compiled_regex.is_err() {
+            return None;
+        }
+
+        Some(Self {
+            compiled_log_format_regex: regex::Regex::new(&user_settings.log_format.pattern)
+                .unwrap(),
+        })
+    }
+}
+
+impl LineHandler for LogFormatLineHandler {
+    fn is_active(&self) -> bool {
+        if compiled_log_format_regex.is_valid() {
+            return true;
+        }
+
+        return false;
+    }
+
+    fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
+        // Log format works only on full lines.
+        assert!(line.len() == 1);
+
+        let line_full = &line[0].0;
+
+        // If nothing matched do nothing.
+        let line_matched_groups_res = feature_log_format_regex.captures(line_full);
+        if line_matched_groups_res.is_none() {
+            return;
+        }
+
+        let line_matched_groups = line_matched_groups_res.unwrap();
+
+        // Verify the number of captures match the number of coloring pattern.
+        let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
+        if actual_group_count != user_settings.log_format.pattern_coloring.len() {
+            return;
+        }
+
+        // Do the actual coloring.
+        let mut line_result: Vec<(String, TextFormat)> = Vec::new();
+
+        for (i, group) in line_matched_groups.iter().enumerate() {
+            // Skip first group which is always a full match.
+            if group.is_none() || i == 0 {
+                return;
+            }
+
+            let group_str = group.unwrap().as_str();
+            let group_str_coloring = user_settings.log_format.pattern_coloring[i - 1];
+            let text_format = color_to_text_format(group_str_coloring, user_settings.font);
+
+            // If this is the last matching group, append a newline.
+            if i == line_matched_groups.len() - 1 {
+                line_result.push((format!("{}\n", group_str), text_format));
+                return;
+            }
+
+            line_result.push((group_str.to_string(), text_format));
+        }
+
+        *line = line_result;
+    }
+}
 
 pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
     user_settings: &UserSettings,
 ) -> Option<LayoutJob> {
+    let text_format_default = TextFormat {
+        font_id: user_settings.font,
+        ..Default::default()
+    };
+
     let mut job = LayoutJob::default();
+    let log_format_line_handler = LogFormatLineHandler::new(user_settings);
 
-    let mut feature_log_format = false;
-    let mut feature_log_format_regex: regex::Regex = regex::Regex::new("").unwrap();
-
-    if !user_settings.log_format.pattern.is_empty()
-        && !user_settings.log_format.pattern_coloring.is_empty()
-    {
-        let log_format = &user_settings.log_format;
-
-        let feature_log_format_regex_result = regex::Regex::new(&log_format.pattern);
-        if feature_log_format_regex_result.is_err() {
-            println!(
-                "Invalid regex pattern for log formatting: {}",
-                log_format.pattern
-            );
-        } else {
-            feature_log_format = true;
-            feature_log_format_regex = feature_log_format_regex_result.unwrap();
-        }
-    }
+    let handlers: Vec<Option<LineHandler>> = vec![log_format_line_handler];
 
     for line in opened_file.content.lines() {
-        if feature_log_format {
-            let line_matched_groups = feature_log_format_regex.captures(line);
-            if line_matched_groups.is_none() {
-                let text_format = TextFormat {
-                    font_id: user_settings.font,
-                    ..Default::default()
-                };
+        if !handlers.is_empty() {
+            let mut line_parts: Vec<(String, TextFormat)> =
+                vec![(line.to_string(), text_format_default)];
 
-                job.append(&format!("{}\n", line), 0.0, text_format);
-                continue;
-            }
-
-            let line_matched_groups = line_matched_groups.unwrap();
-
-            // Verify the number of captures match the number of coloring pattern.
-            let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
-            if actual_group_count != user_settings.log_format.pattern_coloring.len() {
-                let text_format = TextFormat {
-                    font_id: user_settings.font,
-                    ..Default::default()
-                };
-
-                job.append(&format!("{}\n", line), 0.0, text_format);
-                continue;
-            }
-
-            // Do the actual coloring.
-            for (i, group) in line_matched_groups.iter().enumerate() {
-                // Skip first group which is always a full line.
-                if group.is_none() || i == 0 {
+            for handler_opt in &handlers {
+                if handler_opt.is_none() {
                     continue;
                 }
 
-                let group_str = group.unwrap().as_str();
-                let group_str_coloring = user_settings.log_format.pattern_coloring[i - 1];
-                let text_format = color_to_text_format(group_str_coloring, user_settings.font);
-
-                // If this is the last matching group, append a newline.
-                if i == line_matched_groups.len() - 1 {
-                    job.append(&format!("{}\n", group_str), 0.0, text_format);
+                let handler = handler_opt.as_ref().unwrap();
+                if !handler.is_active() {
                     continue;
                 }
 
-                job.append(group_str, 0.0, text_format);
+                handler.process_line(&mut line_parts);
+            }
+
+            for (part_str, part_format) in line_parts {
+                job.append(&part_str, 0.0, part_format);
             }
         } else {
-            let text_format = TextFormat {
-                font_id: user_settings.font,
-                ..Default::default()
-            };
-
-            job.append(&format!("{}\n", line), 0.0, text_format);
+            job.append(&format!("{}\n", line), 0.0, text_format_default);
         }
     }
 
