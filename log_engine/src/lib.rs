@@ -95,33 +95,25 @@ pub fn default_log_content() -> LayoutJob {
     job
 }
 
-pub fn load_file(user_settings: &UserSettings) -> (LayoutJob, Option<OpenedFileMetadata>) {
+pub fn load_file(user_settings: &UserSettings) -> Option<OpenedFileMetadata> {
     let path = user_settings.file_path.clone();
     println!("Loading file: {}", path);
-    let mut job = LayoutJob::default();
-
-    let text_format = TextFormat {
-        font_id: user_settings.font,
-        ..Default::default()
-    };
 
     let read_result = std::fs::read_to_string(&path);
     if read_result.is_err() {
-        job.append(
-            &format!("Failed to read file: {}\n", path),
-            0.0,
-            text_format,
+        println!(
+            "Failed to read file: {}, error: {}",
+            path,
+            read_result.err().unwrap()
         );
-        return (job, None);
+        return None;
     }
 
     let file_content = read_result.unwrap();
 
-    job.append(&file_content, 0.0, text_format);
-
     let mut opened_file_meta = OpenedFileMetadata::default();
     opened_file_meta.path = path.clone();
-    opened_file_meta.content = file_content.clone();
+    opened_file_meta.content = file_content;
     opened_file_meta.content_max_line_chars = file_content
         .lines()
         .map(|line| line.len())
@@ -129,7 +121,7 @@ pub fn load_file(user_settings: &UserSettings) -> (LayoutJob, Option<OpenedFileM
         .unwrap_or(0);
     opened_file_meta.content_line_count = file_content.lines().count();
 
-    (job, Some(opened_file_meta))
+    Some(opened_file_meta)
 }
 
 fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
