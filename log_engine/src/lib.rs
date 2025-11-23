@@ -1,12 +1,13 @@
 use egui::{
     Color32, FontId,
+    epaint::tessellator::path,
     text::{LayoutJob, TextFormat},
 };
 
 #[derive(PartialEq, Clone, Default)]
 pub struct LogFormat {
     pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
-    pub pattern_coloring: Vec<egui::Color32>, // coloring for each regex group (i.e. "yellow,green,nocolor")
+    pub pattern_coloring: Vec<egui::Color32>,
 }
 
 #[derive(PartialEq, Clone)]
@@ -23,6 +24,7 @@ pub struct UserSettings {
     pub file_path: String,
     pub log_format: LogFormat,
     pub token_colors: Vec<(String, Color32)>,
+    pub font: FontId,
 }
 
 impl Default for UserSettings {
@@ -40,6 +42,7 @@ impl Default for UserSettings {
             file_path: String::new(),
             log_format: LogFormat::default(),
             token_colors: Vec::with_capacity(20),
+            font: FontId::monospace(12.0),
         };
 
         // Initialize the colors in token_colors to some default values.
@@ -92,26 +95,27 @@ pub fn default_log_content() -> LayoutJob {
     job
 }
 
-pub fn load_file(path: &String) -> (LayoutJob, Option<OpenedFileMetadata>) {
+pub fn load_file(user_settings: &UserSettings) -> (LayoutJob, Option<OpenedFileMetadata>) {
+    let path = user_settings.file_path.clone();
     println!("Loading file: {}", path);
     let mut job = LayoutJob::default();
+
+    let text_format = TextFormat {
+        font_id: user_settings.font,
+        ..Default::default()
+    };
 
     let read_result = std::fs::read_to_string(&path);
     if read_result.is_err() {
         job.append(
             &format!("Failed to read file: {}\n", path),
             0.0,
-            TextFormat::default(),
+            text_format,
         );
         return (job, None);
     }
 
     let file_content = read_result.unwrap();
-
-    let text_format = TextFormat {
-        font_id: FontId::monospace(12.0),
-        ..Default::default()
-    };
 
     job.append(&file_content, 0.0, text_format);
 
@@ -128,9 +132,9 @@ pub fn load_file(path: &String) -> (LayoutJob, Option<OpenedFileMetadata>) {
     (job, Some(opened_file_meta))
 }
 
-fn color_to_text_format(color_name: egui::Color32) -> TextFormat {
+fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
     let mut text_format = TextFormat::default();
-    text_format.font_id = FontId::monospace(12.0);
+    text_format.font_id = font;
 
     text_format.background = color_name;
 
@@ -145,6 +149,10 @@ fn color_to_text_format(color_name: egui::Color32) -> TextFormat {
 
     text_format
 }
+
+// TODO: split this into smaller chunks for each feature - tokens and log format, in future
+// maybe lua scripts. Each line should be fed to the feature and a "common" line should be added to
+// LayoutJob.
 
 pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
@@ -177,7 +185,7 @@ pub fn recalculate_log_job(
             let line_matched_groups = feature_log_format_regex.captures(line);
             if line_matched_groups.is_none() {
                 let text_format = TextFormat {
-                    font_id: FontId::monospace(12.0),
+                    font_id: user_settings.font,
                     ..Default::default()
                 };
 
@@ -191,7 +199,7 @@ pub fn recalculate_log_job(
             let actual_group_count = line_matched_groups.len() - 1; // 1 for original line
             if actual_group_count != user_settings.log_format.pattern_coloring.len() {
                 let text_format = TextFormat {
-                    font_id: FontId::monospace(12.0),
+                    font_id: user_settings.font,
                     ..Default::default()
                 };
 
@@ -208,7 +216,7 @@ pub fn recalculate_log_job(
 
                 let group_str = group.unwrap().as_str();
                 let group_str_coloring = user_settings.log_format.pattern_coloring[i - 1];
-                let text_format = color_to_text_format(group_str_coloring);
+                let text_format = color_to_text_format(group_str_coloring, user_settings.font);
 
                 // If this is the last matching group, append a newline.
                 if i == line_matched_groups.len() - 1 {
@@ -220,7 +228,7 @@ pub fn recalculate_log_job(
             }
         } else {
             let text_format = TextFormat {
-                font_id: FontId::monospace(12.0),
+                font_id: user_settings.font,
                 ..Default::default()
             };
 

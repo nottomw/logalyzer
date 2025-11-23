@@ -318,7 +318,7 @@ impl eframe::App for LogalyzerGUI {
                 || self.state.opened_file.as_ref().unwrap().path != self.user_settings.file_path
             {
                 // Reload file if it was requested, or the path has changed.
-                let (file_job, loaded_file_meta) = load_file(&self.user_settings.file_path);
+                let (file_job, loaded_file_meta) = load_file(&self.user_settings);
 
                 self.state.log_job = file_job.clone();
                 self.state.opened_file = loaded_file_meta;
