@@ -286,7 +286,7 @@ impl eframe::App for LogalyzerGUI {
                     egui::Grid::new("tokens_grid").show(ui, |ui| {
                         for i in 0..20 {
                             // TODO: Bold assumption we're in range, good for now
-                            let token_color = &mut self.user_settings.token_colors[i];
+                            let token_color = &mut self.user_settings_staging.token_colors[i];
 
                             ui.label(format!("#{}:", i + 1));
                             ui.add_sized(
@@ -301,7 +301,8 @@ impl eframe::App for LogalyzerGUI {
                     ui.horizontal(|ui| {
                         let button_apply = ui.button("Apply");
                         if button_apply.clicked() {
-                            println!("Apply token colors not implemented yet");
+                            self.user_settings.token_colors =
+                                self.user_settings_staging.token_colors.clone();
                         }
 
                         let button_close = ui.button("Close");
