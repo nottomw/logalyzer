@@ -151,10 +151,20 @@ impl LineHandler for TokenHilightLineHandler {
                     while let Some(pos) = part_str[start..].find(token) {
                         // Append the text before the token.
                         if pos > 0 {
-                            new_line_result[part_no + part_no_offset] = (
-                                part_str[start..start + pos].to_string(),
-                                original_text_format.clone(),
-                            );
+                            if part_no_offset == 0 {
+                                new_line_result[part_no + part_no_offset] = (
+                                    part_str[start..start + pos].to_string(),
+                                    original_text_format.clone(),
+                                );
+                            } else {
+                                new_line_result.insert(
+                                    part_no + part_no_offset,
+                                    (
+                                        part_str[start..start + pos].to_string(),
+                                        original_text_format.clone(),
+                                    ),
+                                );
+                            }
                             part_no_offset += 1;
                         }
 
