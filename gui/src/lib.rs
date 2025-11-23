@@ -47,8 +47,9 @@ impl Default for LogalyzerState {
 
 struct LogalyzerGUI {
     user_settings: UserSettings,
-    user_settings_cached: UserSettings,
-    user_settings_staging: UserSettings, // for editing, after OK is pressed this is copied to user_settings
+    user_settings_cached: UserSettings, // The only purpose of this is to detect changes and trigger repaints.
+    user_settings_staging: UserSettings, // For editing, after OK/Apply is pressed this is copied to user_settings.
+    // TODO: there is probably a bug here, related to canceling some different changes and then pressing OK in an unrelated window.
     state: LogalyzerState,
 }
 
@@ -229,21 +230,25 @@ impl eframe::App for LogalyzerGUI {
                         ui.add_enabled(file_opened, egui::Button::new("Histogram"));
                     if button_histogram.clicked() {
                         println!("not implemented");
+                        // TODO: implement histogram
                     }
 
                     let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
                     if button_stats.clicked() {
                         println!("not implemented");
+                        // TODO: implement stats
                     }
 
                     let button_save_config = ui.button("Save config");
                     if button_save_config.clicked() {
                         println!("not implemented");
+                        // TODO: implement config saving
                     }
 
                     let button_load_config = ui.button("Load config");
                     if button_load_config.clicked() {
                         println!("not implemented");
+                        // TODO: implement config loading
                     }
 
                     ui.add_enabled(
