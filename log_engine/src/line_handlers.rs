@@ -139,13 +139,9 @@ impl LineHandler for TokenHilightLineHandler {
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
         let mut line_result: Vec<(String, TextFormat)> = line.clone();
 
-        // TODO: this is duplicating lines when a different token appears in the same line
-
         for (token, color) in self.token_colors.iter() {
-            println!("1. Searching for TOKEN: {}", token);
             let mut part_no = 0;
             for (part_str, original_text_format) in line_result.iter() {
-                println!("2. Searching for TOKEN: {} in {}", token, part_str);
                 if part_str.contains(token) {
                     let mut new_line_result: Vec<(String, TextFormat)> = line_result.clone();
                     let mut start = 0;
@@ -153,10 +149,6 @@ impl LineHandler for TokenHilightLineHandler {
                     let mut part_no_offset = 0;
 
                     while let Some(pos) = part_str[start..].find(token) {
-                        println!(
-                            "3. Searching for TOKEN: {} in {} found at pos: {}",
-                            token, part_str, pos
-                        );
                         // Append the text before the token.
                         if pos > 0 {
                             new_line_result[part_no + part_no_offset] = (
