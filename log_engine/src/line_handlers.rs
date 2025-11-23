@@ -104,7 +104,6 @@ impl LineHandler for LogFormatLineHandler {
 
 pub struct TokenHilightLineHandler {
     token_colors: Vec<(String, Color32)>,
-    default_format: TextFormat,
 }
 
 impl TokenHilightLineHandler {
@@ -119,12 +118,11 @@ impl TokenHilightLineHandler {
         token_colors
             .retain(|(token, _)| !token.is_empty() || !token.chars().all(char::is_whitespace));
 
+        // Sort the token_colors - longest tokens first.
+        token_colors.sort_by(|(token_a, _), (token_b, _)| token_b.len().cmp(&token_a.len()));
+
         Some(Self {
             token_colors: token_colors,
-            default_format: TextFormat {
-                font_id: user_settings.font.clone(),
-                ..Default::default()
-            },
         })
     }
 }
@@ -139,34 +137,60 @@ impl LineHandler for TokenHilightLineHandler {
     }
 
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
-        let mut line_result: Vec<(String, TextFormat)> = Vec::new();
+        let mut line_result: Vec<(String, TextFormat)> = line.clone();
 
-        for (part_str, part_format) in line.iter() {
-            // Search for a token in each part.
-            for (token, color) in self.token_colors.iter() {
-                let mut start = 0;
+        // TODO: this is duplicating lines when a different token appears in the same line
 
-                while let Some(pos) = part_str[start..].find(token) {
-                    // Append the text before the token.
-                    if pos > 0 {
-                        line_result.push((
-                            part_str[start..start + pos].to_string(),
-                            self.default_format.clone(),
-                        ));
+        for (token, color) in self.token_colors.iter() {
+            println!("1. Searching for TOKEN: {}", token);
+            let mut part_no = 0;
+            for (part_str, original_text_format) in line_result.iter() {
+                println!("2. Searching for TOKEN: {} in {}", token, part_str);
+                if part_str.contains(token) {
+                    let mut new_line_result: Vec<(String, TextFormat)> = line_result.clone();
+                    let mut start = 0;
+
+                    let mut part_no_offset = 0;
+
+                    while let Some(pos) = part_str[start..].find(token) {
+                        println!(
+                            "3. Searching for TOKEN: {} in {} found at pos: {}",
+                            token, part_str, pos
+                        );
+                        // Append the text before the token.
+                        if pos > 0 {
+                            new_line_result[part_no + part_no_offset] = (
+                                part_str[start..start + pos].to_string(),
+                                original_text_format.clone(),
+                            );
+                            part_no_offset += 1;
+                        }
+
+                        // Append the token with the highlight color.
+                        let highlight_format =
+                            color_to_text_format(*color, original_text_format.font_id.clone());
+                        new_line_result.insert(
+                            part_no + part_no_offset,
+                            (token.to_string(), highlight_format),
+                        );
+                        part_no_offset += 1;
+
+                        start += pos + token.len();
                     }
 
-                    // Append the token with the highlight color.
-                    let highlight_format =
-                        color_to_text_format(*color, part_format.font_id.clone());
-                    line_result.push((token.to_string(), highlight_format));
+                    // Append any remaining text after the last token.
+                    if start < part_str.len() {
+                        new_line_result.insert(
+                            part_no + part_no_offset,
+                            (part_str[start..].to_string(), original_text_format.clone()),
+                        );
+                    }
 
-                    start += pos + token.len();
+                    line_result = new_line_result;
+                    break; // Move to the next token after processing this one.
                 }
 
-                // Append any remaining text after the last token.
-                if start < part_str.len() {
-                    line_result.push((part_str[start..].to_string(), self.default_format.clone()));
-                }
+                part_no += 1;
             }
         }
 
