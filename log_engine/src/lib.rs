@@ -81,12 +81,21 @@ pub fn recalculate_log_job(
 ) -> Option<LayoutJob> {
     let mut job = LayoutJob::default();
 
+    let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
+
     let log_format_line_handler = LogFormatLineHandler::new(user_settings);
+    if let Some(handler) = log_format_line_handler {
+        if handler.is_active() {
+            handlers.push(Box::from(handler));
+        }
+    }
 
-    // TODO: use this
     let token_hilight_line_handler = TokenHilightLineHandler::new(user_settings);
-
-    let handlers: Vec<Option<LogFormatLineHandler>> = vec![log_format_line_handler];
+    if let Some(handler) = token_hilight_line_handler {
+        if handler.is_active() {
+            handlers.push(Box::from(handler));
+        }
+    }
 
     for line in opened_file.content.lines() {
         if !handlers.is_empty() {
@@ -98,16 +107,7 @@ pub fn recalculate_log_job(
                 },
             )];
 
-            for handler_opt in &handlers {
-                if handler_opt.is_none() {
-                    continue;
-                }
-
-                let handler = handler_opt.as_ref().unwrap();
-                if !handler.is_active() {
-                    continue;
-                }
-
+            for handler in &handlers {
                 handler.process_line(&mut line_parts);
             }
 
