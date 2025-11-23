@@ -136,6 +136,8 @@ impl LineHandler for TokenHilightLineHandler {
         return false;
     }
 
+    // TODO: token hilighter should be unit tested
+    // TODO: token hilighter probably must be optimized
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
         let mut line_result: Vec<(String, TextFormat)> = line.clone();
 

@@ -1,4 +1,4 @@
-// TODO: lua
+// TODO: lua support maybe
 // TODO: stream support
 
 fn main() {
