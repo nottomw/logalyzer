@@ -326,8 +326,6 @@ impl eframe::App for LogalyzerGUI {
                             let user_settings_res = log_engine::configuration_load(&path);
                             if let Ok(loaded_user_settings) = user_settings_res {
                                 self.user_settings = loaded_user_settings.clone();
-                                self.user_settings_cached = loaded_user_settings.clone();
-                                self.user_settings_staging = loaded_user_settings;
                             }
                         }
                     }
