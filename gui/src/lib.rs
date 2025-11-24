@@ -367,6 +367,12 @@ impl eframe::App for LogalyzerGUI {
                     total_rows = opened_file.content_line_count;
                 }
 
+                let scroll_sources_allowed = egui::scroll_area::ScrollSource {
+                    scroll_bar: true,
+                    drag: false,
+                    mouse_wheel: true,
+                };
+
                 if self.state.opened_file.is_some() {
                     let opened_file = self.state.opened_file.as_ref().unwrap();
 
@@ -380,6 +386,7 @@ impl eframe::App for LogalyzerGUI {
                         .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                         .vertical_scroll_offset(self.state.vertical_scroll_offset)
                         .animated(false)
+                        .scroll_source(scroll_sources_allowed)
                         .show_rows(
                             ui,
                             self.user_settings.font.size,
@@ -412,6 +419,7 @@ impl eframe::App for LogalyzerGUI {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_width(scroll_area_width_max)
                     .animated(false)
+                    .scroll_source(scroll_sources_allowed)
                     .show_rows(
                         ui,
                         self.user_settings.font.size,
