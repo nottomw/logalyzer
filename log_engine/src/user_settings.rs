@@ -1,4 +1,5 @@
 use egui::{Color32, FontId};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 #[derive(PartialEq, Clone, Default)]
@@ -24,16 +25,91 @@ pub struct UserSettings {
     pub font: FontId,
 }
 
+// HACK: just a struct that doesnt use egui types, for ser/des.
+#[derive(Serialize, Deserialize)]
+struct UserSettingsSerDes {
+    pub wrap_text: bool,
+    pub autoscroll: bool,
+    pub search_term: String,
+    pub search_match_case: bool,
+    pub search_whole_word: bool,
+    pub filter_term: String,
+    pub filter_match_case: bool,
+    pub filter_whole_word: bool,
+    pub filter_negative: bool,
+    pub file_path: String,
+    pub log_format_pattern: String,
+    pub log_format_pattern_coloring: Vec<(u8, u8, u8)>, // RGB
+    pub token_colors: Vec<(String, (u8, u8, u8))>,      // token_name, RGB
+    pub font_size: f32,
+}
+
 impl UserSettings {
     pub fn serialize(&self) -> Result<String, Box<dyn Error>> {
-        let mut serialized = String::new();
-        serialized.push_str("UserSettings serialization is not implemented yet.\n");
+        let ser_des = UserSettingsSerDes {
+            wrap_text: self.wrap_text,
+            autoscroll: self.autoscroll,
+            search_term: self.search_term.clone(),
+            search_match_case: self.search_match_case,
+            search_whole_word: self.search_whole_word,
+            filter_term: self.filter_term.clone(),
+            filter_match_case: self.filter_match_case,
+            filter_whole_word: self.filter_whole_word,
+            filter_negative: self.filter_negative,
+            file_path: self.file_path.clone(),
+            log_format_pattern: self.log_format.pattern.clone(),
+            log_format_pattern_coloring: self
+                .log_format
+                .pattern_coloring
+                .iter()
+                .map(|c| (c.r(), c.g(), c.b()))
+                .collect(),
+            token_colors: self
+                .token_colors
+                .iter()
+                .map(|(name, color)| (name.clone(), (color.r(), color.g(), color.b())))
+                .collect(),
+            font_size: self.font.size,
+        };
+
+        let serialized = serde_json::to_string_pretty(&ser_des)?;
 
         Ok(serialized)
     }
 
     pub fn deserialize(str: &String) -> Result<UserSettings, Box<dyn Error>> {
-        Ok(UserSettings::default())
+        let ser_des: UserSettingsSerDes = serde_json::from_str(str)?;
+
+        let log_format = LogFormat {
+            pattern: ser_des.log_format_pattern,
+            pattern_coloring: ser_des
+                .log_format_pattern_coloring
+                .iter()
+                .map(|(r, g, b)| Color32::from_rgb(*r, *g, *b))
+                .collect(),
+        };
+
+        let token_colors = ser_des
+            .token_colors
+            .iter()
+            .map(|(name, (r, g, b))| (name.clone(), Color32::from_rgb(*r, *g, *b)))
+            .collect();
+
+        Ok(UserSettings {
+            wrap_text: ser_des.wrap_text,
+            autoscroll: ser_des.autoscroll,
+            search_term: ser_des.search_term,
+            search_match_case: ser_des.search_match_case,
+            search_whole_word: ser_des.search_whole_word,
+            filter_term: ser_des.filter_term,
+            filter_match_case: ser_des.filter_match_case,
+            filter_whole_word: ser_des.filter_whole_word,
+            filter_negative: ser_des.filter_negative,
+            file_path: ser_des.file_path,
+            log_format,
+            token_colors,
+            font: FontId::monospace(ser_des.font_size),
+        })
     }
 }
 
