@@ -339,6 +339,7 @@ impl eframe::App for LogalyzerGUI {
                         }
                     }
 
+                    // TODO: wrapping currently breaks the line numbers, should be fixed
                     ui.add_enabled(
                         file_opened,
                         egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
