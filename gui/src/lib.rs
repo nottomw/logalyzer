@@ -50,8 +50,7 @@ impl Default for LogalyzerState {
 struct LogalyzerGUI {
     user_settings: UserSettings,
     user_settings_cached: UserSettings, // The only purpose of this is to detect changes and trigger repaints.
-    user_settings_staging: UserSettings, // For editing, after OK/Apply is pressed this is copied to user_settings.
-    // TODO: there is probably a bug here, related to canceling some different changes and then pressing OK in an unrelated window.
+    user_settings_staging: UserSettings, // For editing, after OK/Apply is pressed part of this is copied to user_settings.
     state: LogalyzerState,
 }
 
