@@ -54,6 +54,51 @@ struct LogalyzerGUI {
     state: LogalyzerState,
 }
 
+impl LogalyzerGUI {
+    fn get_scroll_delta_based_on_keypress(
+        &self,
+        ctx: &egui::Context,
+        ui: &egui::Ui,
+        height: f32,
+        width: f32,
+    ) -> egui::Vec2 {
+        let mut scroll_delta = egui::Vec2::ZERO;
+        let mut anything_focused = false;
+
+        ctx.memory(|mem| {
+            anything_focused = mem.focused().is_some();
+        });
+
+        if anything_focused {
+            return scroll_delta;
+        }
+
+        // These should be pretty big steps, so the user can navigate quickly.
+        let scroll_delta_vertical = height * 0.4;
+        let scroll_delta_horizontal = width * 0.4;
+
+        if !anything_focused {
+            if ui.input(|i| i.key_pressed(egui::Key::A)) {
+                scroll_delta += egui::vec2(scroll_delta_horizontal, 0.0);
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::D)) {
+                scroll_delta += egui::vec2(-scroll_delta_horizontal, 0.0);
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::W)) {
+                scroll_delta += egui::vec2(0.0, scroll_delta_vertical);
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::S)) {
+                scroll_delta += egui::vec2(0.0, -scroll_delta_vertical);
+            }
+        }
+
+        scroll_delta
+    }
+}
+
 impl Default for LogalyzerGUI {
     fn default() -> Self {
         Self {
@@ -413,6 +458,13 @@ impl eframe::App for LogalyzerGUI {
                     };
                 }
 
+                let scroll_delta_keyboard = self.get_scroll_delta_based_on_keypress(
+                    ctx,
+                    ui,
+                    central_panel_height,
+                    width_left_after_adding_line_numbers,
+                );
+
                 let scroll_area = egui::ScrollArea::both()
                     .id_salt("log_file")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
@@ -425,6 +477,7 @@ impl eframe::App for LogalyzerGUI {
                         total_rows,
                         |ui, row_range| {
                             ui.set_min_height(ui.available_height());
+                            ui.scroll_with_delta(scroll_delta_keyboard);
 
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {
