@@ -6,7 +6,7 @@ use egui::text::{LayoutJob, TextWrapping};
 use log_engine::user_settings::UserSettings;
 use log_engine::*;
 
-pub fn run_gui() {
+pub fn run_gui(args: Vec<String>) {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1200.0, 800.0]),
         ..Default::default()
@@ -15,7 +15,7 @@ pub fn run_gui() {
     let run_result = eframe::run_native(
         "Logalyzer",
         options,
-        Box::new(|_cc| Ok(Box::new(LogalyzerGUI::default()) as Box<dyn eframe::App>)),
+        Box::new(|_cc| Ok(Box::new(LogalyzerGUI::new(args)) as Box<dyn eframe::App>)),
     );
 
     if run_result.is_err() {
@@ -55,6 +55,30 @@ struct LogalyzerGUI {
 }
 
 impl LogalyzerGUI {
+    fn new(args: Vec<String>) -> Self {
+        let mut new_self = Self::default();
+
+        // For now processing cmdline args manually here as the params are super simple.
+        for arg in args.iter().skip(1) {
+            match arg.as_str() {
+                "--help" | "-h" => {
+                    // TODO: add load configuration here
+                    println!("Logalyzer help:");
+                    println!("--file=<path> Specify the log file to open.");
+                    std::process::exit(0);
+                }
+                _ => {
+                    if arg.starts_with("--file=") {
+                        let file_path = arg.trim_start_matches("--file=");
+                        new_self.user_settings.file_path = file_path.to_string();
+                    }
+                }
+            }
+        }
+
+        new_self
+    }
+
     fn get_scroll_delta_based_on_keypress(
         &self,
         ctx: &egui::Context,

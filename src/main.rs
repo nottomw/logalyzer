@@ -2,5 +2,6 @@
 // TODO: stream support
 
 fn main() {
-    gui::run_gui();
+    let args = std::env::args().collect::<Vec<String>>();
+    gui::run_gui(args);
 }
