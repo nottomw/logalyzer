@@ -469,6 +469,7 @@ impl eframe::App for LogalyzerGUI {
                     .max_width(scroll_area_width_max)
                     .animated(false)
                     .scroll_source(scroll_sources_allowed)
+                    .auto_shrink(false)
                     .show_rows(
                         ui,
                         self.user_settings.font.size,
