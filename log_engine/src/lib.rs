@@ -182,5 +182,17 @@ pub fn configuration_load(file_path: &std::path::Path) -> Result<UserSettings, B
         file_path.to_string_lossy()
     );
 
-    Ok(UserSettings::default())
+    let read_result = std::fs::read_to_string(file_path);
+    if let Err(e) = read_result {
+        println!("Error reading configuration file: {}", e);
+        return Err(Box::new(e));
+    }
+
+    let deserialized = UserSettings::deserialize(&read_result.unwrap());
+    if let Err(e) = deserialized {
+        println!("Error deserializing configuration: {}", e);
+        return Err(e);
+    }
+
+    Ok(deserialized.unwrap())
 }

@@ -26,10 +26,13 @@ pub struct UserSettings {
 
 impl UserSettings {
     pub fn serialize(&self) -> Result<String, Box<dyn Error>> {
-        Ok(String::new())
+        let mut serialized = String::new();
+        serialized.push_str("UserSettings serialization is not implemented yet.\n");
+
+        Ok(serialized)
     }
 
-    pub fn deserialize(&self) -> Result<UserSettings, Box<dyn Error>> {
+    pub fn deserialize(str: &String) -> Result<UserSettings, Box<dyn Error>> {
         Ok(UserSettings::default())
     }
 }
