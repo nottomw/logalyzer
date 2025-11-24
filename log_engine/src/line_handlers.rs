@@ -67,6 +67,7 @@ impl LineHandler for LogFormatLineHandler {
         assert!(line.len() == 1);
 
         let line_full = &line[0].0;
+        let line_original_format = &line[0].1;
 
         // If nothing matched do nothing.
         let line_matched_groups_res = self.compiled_log_format_regex.captures(line_full);
@@ -93,7 +94,10 @@ impl LineHandler for LogFormatLineHandler {
 
             let group_str = group.unwrap().as_str();
             let group_str_coloring = self.pattern_coloring[i - 1];
-            let text_format = color_to_text_format(group_str_coloring, self.default_font.clone());
+            let mut text_format =
+                color_to_text_format(group_str_coloring, self.default_font.clone());
+
+            text_format.color = line_original_format.color; // Preserve original text color.
 
             line_result.push((group_str.to_string(), text_format));
         }
