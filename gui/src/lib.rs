@@ -362,7 +362,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
                         ui.end_row();
 
-                        // TODO: implement search & filter
+                        // TODO: implement search
                         ui.label("Filter:");
                         ui.add_sized(
                             [300.0, 20.0],
@@ -371,6 +371,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
                         ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
                         ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
+                        // TODO: && and || support maybe
                         ui.end_row();
                     });
                 });
