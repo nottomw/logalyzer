@@ -90,6 +90,14 @@ pub fn recalculate_log_job(
 
     let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
 
+    // The filter should be first, so we're not applying other handlers to lines that will be invisible anyway.
+    let filter_line_handler = FilterLineHandler::new(user_settings);
+    if let Some(handler) = filter_line_handler {
+        if handler.is_active() {
+            handlers.push(Box::from(handler));
+        }
+    }
+
     let log_format_line_handler = LogFormatLineHandler::new(user_settings);
     if let Some(handler) = log_format_line_handler {
         if handler.is_active() {
@@ -103,6 +111,8 @@ pub fn recalculate_log_job(
             handlers.push(Box::from(handler));
         }
     }
+
+    let mut lines_visible = 0;
 
     for line in opened_file.content.lines() {
         let mut single_line_job = LayoutJob::default();
@@ -134,10 +144,13 @@ pub fn recalculate_log_job(
             );
         }
 
-        jobs_log.push(single_line_job);
+        if !single_line_job.is_empty() {
+            lines_visible += 1;
+            jobs_log.push(single_line_job);
+        }
     }
 
-    for line_no in 1..=opened_file.content_line_count {
+    for line_no in 1..=lines_visible {
         let mut single_line_no_job = LayoutJob::default();
 
         single_line_no_job.append(

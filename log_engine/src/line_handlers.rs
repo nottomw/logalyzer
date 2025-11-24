@@ -204,3 +204,58 @@ impl LineHandler for TokenHilightLineHandler {
         *line = line_result;
     }
 }
+
+pub struct FilterLineHandler {
+    filter_term: String,
+    match_case: bool,
+    whole_word: bool,
+    negative: bool,
+}
+
+impl FilterLineHandler {
+    pub fn new(user_settings: &UserSettings) -> Option<Self> {
+        if user_settings.filter_term.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            filter_term: user_settings.filter_term.clone(),
+            match_case: user_settings.filter_match_case,
+            whole_word: user_settings.filter_whole_word,
+            negative: user_settings.filter_negative,
+        })
+    }
+}
+
+impl LineHandler for FilterLineHandler {
+    fn is_active(&self) -> bool {
+        if self.filter_term.is_empty() {
+            return false;
+        }
+
+        return true;
+    }
+
+    fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
+        let mut matched = false;
+        for (part_str, _) in line.iter() {
+            if part_str.contains(&self.filter_term) {
+                // TODO: handle case sensitive & whole word matches.
+                matched = true;
+                break;
+            }
+        }
+
+        if !matched {
+            if self.negative {
+                return;
+            } else {
+                line.clear();
+            }
+        } else {
+            if self.negative {
+                line.clear();
+            }
+        }
+    }
+}
