@@ -396,8 +396,6 @@ impl eframe::App for LogalyzerGUI {
             }
         }
 
-        // TODO: keyboard shortcuts for scrolling down/up/right/left maybe?
-
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_height(central_panel_height);
 
