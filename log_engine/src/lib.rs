@@ -194,5 +194,7 @@ pub fn configuration_load(file_path: &std::path::Path) -> Result<UserSettings, B
         return Err(e);
     }
 
+    println!("Configuration loaded successfully.");
+
     Ok(deserialized.unwrap())
 }

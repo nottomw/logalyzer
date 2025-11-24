@@ -37,10 +37,9 @@ struct UserSettingsSerDes {
     pub filter_match_case: bool,
     pub filter_whole_word: bool,
     pub filter_negative: bool,
-    pub file_path: String,
     pub log_format_pattern: String,
-    pub log_format_pattern_coloring: Vec<(u8, u8, u8)>, // RGB
-    pub token_colors: Vec<(String, (u8, u8, u8))>,      // token_name, RGB
+    pub log_format_pattern_coloring: Vec<(u8, u8, u8, u8)>, // RGBA
+    pub token_colors: Vec<(String, (u8, u8, u8, u8))>,      // token_name, RGBA
     pub font_size: f32,
 }
 
@@ -56,18 +55,17 @@ impl UserSettings {
             filter_match_case: self.filter_match_case,
             filter_whole_word: self.filter_whole_word,
             filter_negative: self.filter_negative,
-            file_path: self.file_path.clone(),
             log_format_pattern: self.log_format.pattern.clone(),
             log_format_pattern_coloring: self
                 .log_format
                 .pattern_coloring
                 .iter()
-                .map(|c| (c.r(), c.g(), c.b()))
+                .map(|c| (c.r(), c.g(), c.b(), c.a()))
                 .collect(),
             token_colors: self
                 .token_colors
                 .iter()
-                .map(|(name, color)| (name.clone(), (color.r(), color.g(), color.b())))
+                .map(|(name, color)| (name.clone(), (color.r(), color.g(), color.b(), color.a())))
                 .collect(),
             font_size: self.font.size,
         };
@@ -85,14 +83,19 @@ impl UserSettings {
             pattern_coloring: ser_des
                 .log_format_pattern_coloring
                 .iter()
-                .map(|(r, g, b)| Color32::from_rgb(*r, *g, *b))
+                .map(|(r, g, b, a)| Color32::from_rgba_unmultiplied(*r, *g, *b, *a))
                 .collect(),
         };
 
         let token_colors = ser_des
             .token_colors
             .iter()
-            .map(|(name, (r, g, b))| (name.clone(), Color32::from_rgb(*r, *g, *b)))
+            .map(|(name, (r, g, b, a))| {
+                (
+                    name.clone(),
+                    Color32::from_rgba_unmultiplied(*r, *g, *b, *a),
+                )
+            })
             .collect();
 
         Ok(UserSettings {
@@ -105,7 +108,7 @@ impl UserSettings {
             filter_match_case: ser_des.filter_match_case,
             filter_whole_word: ser_des.filter_whole_word,
             filter_negative: ser_des.filter_negative,
-            file_path: ser_des.file_path,
+            file_path: String::new(),
             log_format,
             token_colors,
             font: FontId::monospace(ser_des.font_size),

@@ -325,7 +325,16 @@ impl eframe::App for LogalyzerGUI {
                         if let Some(path) = selected_load_file {
                             let user_settings_res = log_engine::configuration_load(&path);
                             if let Ok(loaded_user_settings) = user_settings_res {
-                                self.user_settings = loaded_user_settings.clone();
+                                let orig_file_path = self.user_settings.file_path.clone();
+
+                                {
+                                    self.user_settings = loaded_user_settings.clone();
+                                    self.user_settings_staging = loaded_user_settings;
+                                }
+
+                                // Preserve currently opened file path.
+                                self.user_settings.file_path = orig_file_path.clone();
+                                self.user_settings_staging.file_path = orig_file_path;
                             }
                         }
                     }
