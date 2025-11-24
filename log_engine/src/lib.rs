@@ -75,11 +75,13 @@ pub fn load_file(user_settings: &UserSettings) -> Option<OpenedFileMetadata> {
     Some(opened_file_meta)
 }
 
+// Returns a tuple of (line number layout jobs, log lines layout jobs)
 pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
     user_settings: &UserSettings,
-) -> Option<LayoutJob> {
-    let mut job = LayoutJob::default();
+) -> Option<(Vec<LayoutJob>, Vec<LayoutJob>)> {
+    let mut jobs_log: Vec<LayoutJob> = Vec::new();
+    let mut jobs_line_numbers: Vec<LayoutJob> = Vec::new();
 
     let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
 
@@ -98,6 +100,8 @@ pub fn recalculate_log_job(
     }
 
     for line in opened_file.content.lines() {
+        let mut single_line_job = LayoutJob::default();
+
         if !handlers.is_empty() {
             let mut line_parts: Vec<(String, TextFormat)> = vec![(
                 line.to_string(),
@@ -111,19 +115,12 @@ pub fn recalculate_log_job(
                 handler.process_line(&mut line_parts);
             }
 
-            // Add newline to the last line part if it's not already there.
-            let line_parts_len = line_parts.len();
-            let ends_with_newline = line_parts[line_parts_len - 1].0.ends_with("\n");
-            if !ends_with_newline {
-                line_parts[line_parts_len - 1].0 += "\n";
-            }
-
             for (part_str, part_format) in line_parts {
-                job.append(&part_str, 0.0, part_format);
+                single_line_job.append(&part_str, 0.0, part_format);
             }
         } else {
-            job.append(
-                &format!("{}\n", line),
+            single_line_job.append(
+                line,
                 0.0,
                 TextFormat {
                     font_id: user_settings.font.clone(),
@@ -131,7 +128,24 @@ pub fn recalculate_log_job(
                 },
             );
         }
+
+        jobs_log.push(single_line_job);
     }
 
-    Some(job)
+    for line_no in 1..=opened_file.content_line_count {
+        let mut single_line_no_job = LayoutJob::default();
+
+        single_line_no_job.append(
+            &format!("{}", line_no),
+            0.0,
+            TextFormat {
+                font_id: user_settings.font.clone(),
+                ..Default::default()
+            },
+        );
+
+        jobs_line_numbers.push(single_line_no_job);
+    }
+
+    Some((jobs_line_numbers, jobs_log))
 }

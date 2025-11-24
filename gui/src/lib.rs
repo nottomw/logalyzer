@@ -26,7 +26,8 @@ pub fn run_gui() {
 struct LogalyzerState {
     vertical_scroll_offset: f32,
     opened_file: Option<OpenedFileMetadata>,
-    log_job: LayoutJob,
+    line_no_jobs: Vec<LayoutJob>,
+    log_jobs: Vec<LayoutJob>,
     win_log_format_open: bool,
     panel_token_colors_open: bool,
     log_format_mode_selected: usize,
@@ -37,7 +38,8 @@ impl Default for LogalyzerState {
         Self {
             vertical_scroll_offset: 0.0,
             opened_file: None,
-            log_job: default_log_content(),
+            line_no_jobs: vec![LayoutJob::default()],
+            log_jobs: vec![default_log_content()],
             win_log_format_open: false,
             panel_token_colors_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
@@ -329,16 +331,22 @@ impl eframe::App for LogalyzerGUI {
                 self.state.opened_file = loaded_file_meta;
 
                 if let Some(opened_file) = self.state.opened_file.as_ref() {
-                    if let Some(file_job) = recalculate_log_job(opened_file, &self.user_settings) {
-                        self.state.log_job = file_job;
+                    if let Some((line_no_jobs, file_jobs)) =
+                        recalculate_log_job(opened_file, &self.user_settings)
+                    {
+                        self.state.line_no_jobs = line_no_jobs;
+                        self.state.log_jobs = file_jobs;
                     }
                 }
             } else {
                 if self.user_settings != self.user_settings_cached {
                     self.user_settings_cached = self.user_settings.clone();
                     let opened_file = self.state.opened_file.as_ref().unwrap();
-                    if let Some(file_job) = recalculate_log_job(opened_file, &self.user_settings) {
-                        self.state.log_job = file_job;
+                    if let Some((line_no_jobs, file_jobs)) =
+                        recalculate_log_job(opened_file, &self.user_settings)
+                    {
+                        self.state.line_no_jobs = line_no_jobs;
+                        self.state.log_jobs = file_jobs;
                     }
                 }
             }
@@ -354,6 +362,11 @@ impl eframe::App for LogalyzerGUI {
 
                 let mut scroll_area_width_max = width_left_after_adding_line_numbers;
 
+                let mut total_rows = 1;
+                if let Some(opened_file) = self.state.opened_file.as_ref() {
+                    total_rows = opened_file.content_line_count;
+                }
+
                 if self.state.opened_file.is_some() {
                     let opened_file = self.state.opened_file.as_ref().unwrap();
 
@@ -366,19 +379,26 @@ impl eframe::App for LogalyzerGUI {
                         .id_salt("line_numbers")
                         .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                         .vertical_scroll_offset(self.state.vertical_scroll_offset)
-                        .show(ui, |ui| {
-                            ui.set_min_height(ui.available_height());
+                        .animated(false)
+                        .show_rows(
+                            ui,
+                            self.user_settings.font.size,
+                            total_rows,
+                            |ui, row_range| {
+                                ui.set_min_height(ui.available_height());
 
-                            let layout_job_numbers = LayoutJob::simple_format(
-                                line_numbers,
-                                egui::TextFormat {
-                                    font_id: self.user_settings.font.clone(),
-                                    ..Default::default()
-                                },
-                            );
-                            ui.label(layout_job_numbers);
-                            width_left_after_adding_line_numbers = ui.available_width();
-                        });
+                                ui.vertical(|ui| {
+                                    for row_index in row_range {
+                                        if let Some(job) = self.state.line_no_jobs.get(row_index) {
+                                            let job_cloned = job.clone();
+                                            ui.label(job_cloned);
+                                        }
+                                    }
+                                });
+
+                                width_left_after_adding_line_numbers = ui.available_width();
+                            },
+                        );
 
                     scroll_area_width_max = if self.user_settings.wrap_text {
                         width_left_after_adding_line_numbers
@@ -391,24 +411,37 @@ impl eframe::App for LogalyzerGUI {
                     .id_salt("log_file")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_width(scroll_area_width_max)
-                    .show(ui, |ui| {
-                        ui.set_min_height(ui.available_height());
+                    .animated(false)
+                    .show_rows(
+                        ui,
+                        self.user_settings.font.size,
+                        total_rows,
+                        |ui, row_range| {
+                            ui.set_min_height(ui.available_height());
 
-                        let mut text_wrapping = TextWrapping::default();
-                        if self.user_settings.wrap_text {
-                            text_wrapping.break_anywhere = true;
-                        }
+                            let mut text_wrapping = TextWrapping::default();
+                            if self.user_settings.wrap_text {
+                                text_wrapping.break_anywhere = true;
+                            }
 
-                        text_wrapping.max_width = scroll_area_width_max;
-                        ui.set_width(scroll_area_width_max);
+                            text_wrapping.max_width = scroll_area_width_max;
+                            ui.set_width(scroll_area_width_max);
 
-                        self.state.log_job.wrap = text_wrapping;
+                            ui.vertical(|ui| {
+                                for row_index in row_range {
+                                    if let Some(job) = self.state.log_jobs.get(row_index) {
+                                        let mut job_cloned = job.clone();
+                                        job_cloned.wrap = text_wrapping.clone();
 
-                        ui.add(
-                            egui::Label::new(self.state.log_job.clone())
-                                .wrap_mode(egui::TextWrapMode::Wrap),
-                        );
-                    });
+                                        ui.add(
+                                            egui::Label::new(job_cloned)
+                                                .wrap_mode(egui::TextWrapMode::Wrap),
+                                        );
+                                    }
+                                }
+                            });
+                        },
+                    );
 
                 self.state.vertical_scroll_offset = scroll_area.state.offset.y;
             });
