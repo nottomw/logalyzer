@@ -30,7 +30,10 @@ impl Default for OpenedFileMetadata {
 pub fn default_log_content() -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    let welcome_message = "Please select a log file or a stream to open.";
+    let welcome_message = "Welcome to Logalyzer.\n\n\
+    Please select a log file or a stream to open.\n\
+    Please use the settings panel to configure log formatting and highlighting options.\n\
+    You can use WASD to navigate quickly through the log file.\n";
 
     job.append(
         welcome_message,
