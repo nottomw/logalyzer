@@ -361,6 +361,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
                         ui.end_row();
 
+                        // TODO: implement search & filter
                         ui.label("Filter:");
                         ui.add_sized(
                             [300.0, 20.0],

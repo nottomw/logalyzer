@@ -25,7 +25,7 @@ pub struct UserSettings {
     pub font: FontId,
 }
 
-// HACK: just a struct that doesnt use egui types, for ser/des.
+// Just a struct that doesnt use egui types, for ser/des; Q&D hack.
 #[derive(Serialize, Deserialize)]
 struct UserSettingsSerDes {
     pub wrap_text: bool,
