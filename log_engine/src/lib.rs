@@ -3,6 +3,8 @@ use egui::{
     text::{LayoutJob, TextFormat},
 };
 
+use std::error::Error;
+
 mod line_handlers;
 pub mod user_settings;
 
@@ -151,4 +153,34 @@ pub fn recalculate_log_job(
     }
 
     Some((jobs_line_numbers, jobs_log))
+}
+
+pub fn configuration_save(file_path: &std::path::Path, user_settings: &UserSettings) {
+    println!(
+        "Trying to save configuration to: {}",
+        file_path.to_string_lossy()
+    );
+
+    let serialized = user_settings.serialize();
+    if let Err(e) = serialized {
+        println!("Error serializing configuration: {}", e);
+        return;
+    }
+
+    let write_result = std::fs::write(file_path, serialized.unwrap());
+    if let Err(e) = write_result {
+        println!("Error writing configuration to file: {}", e);
+        return;
+    }
+
+    println!("Configuration saved successfully.");
+}
+
+pub fn configuration_load(file_path: &std::path::Path) -> Result<UserSettings, Box<dyn Error>> {
+    println!(
+        "Trying to load configuration from: {}",
+        file_path.to_string_lossy()
+    );
+
+    Ok(UserSettings::default())
 }

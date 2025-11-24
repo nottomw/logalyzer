@@ -1,4 +1,5 @@
 use egui::{Color32, FontId};
+use std::error::Error;
 
 #[derive(PartialEq, Clone, Default)]
 pub struct LogFormat {
@@ -21,6 +22,16 @@ pub struct UserSettings {
     pub log_format: LogFormat,
     pub token_colors: Vec<(String, Color32)>,
     pub font: FontId,
+}
+
+impl UserSettings {
+    pub fn serialize(&self) -> Result<String, Box<dyn Error>> {
+        Ok(String::new())
+    }
+
+    pub fn deserialize(&self) -> Result<UserSettings, Box<dyn Error>> {
+        Ok(UserSettings::default())
+    }
 }
 
 impl Default for UserSettings {

@@ -3,8 +3,8 @@ use core::f32;
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
+use log_engine::OpenedFileMetadata;
 use log_engine::user_settings::UserSettings;
-use log_engine::*;
 
 pub fn run_gui(args: Vec<String>) {
     let options = eframe::NativeOptions {
@@ -39,7 +39,7 @@ impl Default for LogalyzerState {
             vertical_scroll_offset: 0.0,
             opened_file: None,
             line_no_jobs: vec![LayoutJob::default()],
-            log_jobs: vec![default_log_content()],
+            log_jobs: vec![log_engine::default_log_content()],
             win_log_format_open: false,
             panel_token_colors_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
@@ -308,14 +308,28 @@ impl eframe::App for LogalyzerGUI {
 
                     let button_save_config = ui.button("Save config");
                     if button_save_config.clicked() {
-                        println!("not implemented");
-                        // TODO: implement config saving
+                        let selected_save_file = rfd::FileDialog::new()
+                            .add_filter("Logalyzer Config", &["logalyzercfg"])
+                            .save_file();
+                        if let Some(path) = selected_save_file {
+                            log_engine::configuration_save(&path, &self.user_settings);
+                        }
                     }
 
                     let button_load_config = ui.button("Load config");
                     if button_load_config.clicked() {
-                        println!("not implemented");
-                        // TODO: implement config loading
+                        let selected_load_file = rfd::FileDialog::new()
+                            .add_filter("Logalyzer Config", &["logalyzercfg"])
+                            .pick_file();
+
+                        if let Some(path) = selected_load_file {
+                            let user_settings_res = log_engine::configuration_load(&path);
+                            if let Ok(loaded_user_settings) = user_settings_res {
+                                self.user_settings = loaded_user_settings.clone();
+                                self.user_settings_cached = loaded_user_settings.clone();
+                                self.user_settings_staging = loaded_user_settings;
+                            }
+                        }
                     }
 
                     ui.add_enabled(
@@ -395,12 +409,12 @@ impl eframe::App for LogalyzerGUI {
                 || self.state.opened_file.as_ref().unwrap().path != self.user_settings.file_path
             {
                 // Reload file if it was requested, or the path has changed.
-                let loaded_file_meta = load_file(&self.user_settings);
+                let loaded_file_meta = log_engine::load_file(&self.user_settings);
                 self.state.opened_file = loaded_file_meta;
 
                 if let Some(opened_file) = self.state.opened_file.as_ref() {
                     if let Some((line_no_jobs, file_jobs)) =
-                        recalculate_log_job(opened_file, &self.user_settings)
+                        log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
                         self.state.log_jobs = file_jobs;
@@ -411,7 +425,7 @@ impl eframe::App for LogalyzerGUI {
                     self.user_settings_cached = self.user_settings.clone();
                     let opened_file = self.state.opened_file.as_ref().unwrap();
                     if let Some((line_no_jobs, file_jobs)) =
-                        recalculate_log_job(opened_file, &self.user_settings)
+                        log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
                         self.state.log_jobs = file_jobs;
