@@ -239,10 +239,31 @@ impl LineHandler for FilterLineHandler {
     fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
         let mut matched = false;
         for (part_str, _) in line.iter() {
-            if part_str.contains(&self.filter_term) {
-                // TODO: handle case sensitive & whole word matches.
-                matched = true;
-                break;
+            let haystack = if self.match_case {
+                part_str.to_string()
+            } else {
+                part_str.to_lowercase()
+            };
+
+            let needle = if self.match_case {
+                self.filter_term.clone()
+            } else {
+                self.filter_term.to_lowercase()
+            };
+
+            if self.whole_word {
+                let words: Vec<&str> = haystack
+                    .split(|c: char| !c.is_alphanumeric() && c != '_')
+                    .collect();
+                if words.iter().any(|&word| word == needle) {
+                    matched = true;
+                    break;
+                }
+            } else {
+                if haystack.contains(&needle) {
+                    matched = true;
+                    break;
+                }
             }
         }
 
