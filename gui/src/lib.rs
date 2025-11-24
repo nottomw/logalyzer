@@ -444,6 +444,8 @@ impl eframe::App for LogalyzerGUI {
             }
         }
 
+        let visible_log_lines = self.state.line_no_jobs.len();
+
         let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_height(central_panel_height);
 
@@ -451,11 +453,6 @@ impl eframe::App for LogalyzerGUI {
                 let mut width_left_after_adding_line_numbers = ui.available_width();
 
                 let mut scroll_area_width_max = width_left_after_adding_line_numbers;
-
-                let mut total_rows = 1;
-                if let Some(opened_file) = self.state.opened_file.as_ref() {
-                    total_rows = opened_file.content_line_count;
-                }
 
                 let scroll_sources_allowed = egui::scroll_area::ScrollSource {
                     scroll_bar: true,
@@ -480,7 +477,7 @@ impl eframe::App for LogalyzerGUI {
                         .show_rows(
                             ui,
                             self.user_settings.font.size,
-                            total_rows,
+                            visible_log_lines,
                             |ui, row_range| {
                                 ui.set_min_height(ui.available_height());
 
@@ -521,7 +518,7 @@ impl eframe::App for LogalyzerGUI {
                     .show_rows(
                         ui,
                         self.user_settings.font.size,
-                        total_rows,
+                        visible_log_lines,
                         |ui, row_range| {
                             ui.set_min_height(ui.available_height());
                             ui.scroll_with_delta(scroll_delta_keyboard);
