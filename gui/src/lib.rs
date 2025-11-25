@@ -370,7 +370,7 @@ impl eframe::App for LogalyzerGUI {
                     );
 
                     // TODO: implement comments system
-                    // TODO: option to save comments maybe?
+                    // TODO: option to save comments to a file maybe?
                     // TODO: show only commented lines
                     // ui.add_enabled(
                     //     file_opened,
