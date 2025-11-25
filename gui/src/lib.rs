@@ -1,6 +1,7 @@
 use core::f32;
 
 use eframe::egui;
+use egui::Vec2;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
 use log_engine::OpenedFileMetadata;
@@ -384,11 +385,14 @@ impl eframe::App for LogalyzerGUI {
                     // );
                 });
 
-                ui.horizontal(|ui| {
-                    egui::Grid::new("").show(ui, |ui| {
-                        ui.label("Search:");
+                let search_and_filter_label_size = Vec2::new(80.0, 20.0);
+                let search_and_filter_input_size = Vec2::new(300.0, 20.0);
+
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.add_sized(search_and_filter_label_size, egui::Label::new("Search:"));
                         ui.add_sized(
-                            [300.0, 20.0],
+                            search_and_filter_input_size,
                             egui::TextEdit::singleline(&mut self.user_settings.search_term),
                         );
                         ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
@@ -416,12 +420,12 @@ impl eframe::App for LogalyzerGUI {
                                 (self.state.search_found_showing_index + 1)
                                     % self.state.search_found.len();
                         }
+                    });
 
-                        ui.end_row();
-
-                        ui.label("Filter:");
+                    ui.horizontal(|ui| {
+                        ui.add_sized(search_and_filter_label_size, egui::Label::new("Filter:"));
                         ui.add_sized(
-                            [300.0, 20.0],
+                            search_and_filter_input_size,
                             egui::TextEdit::singleline(&mut self.user_settings.filter_term),
                         );
                         ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
@@ -429,7 +433,6 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
                         // TODO: && and || support maybe
                         // TODO: show lines before & after filter
-                        ui.end_row();
                     });
                 });
             });
