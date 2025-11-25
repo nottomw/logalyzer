@@ -399,7 +399,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
                         ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
                         // TODO: && and || support maybe
-                        // TODO: show before & show after filter
+                        // TODO: show lines before & after filter
                         ui.end_row();
                     });
                 });
