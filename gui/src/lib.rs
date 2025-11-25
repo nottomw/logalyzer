@@ -5,6 +5,7 @@ use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
 use log_engine::OpenedFileMetadata;
 use log_engine::user_settings::UserSettings;
+use std::path::Path;
 
 pub fn run_gui(args: Vec<String>) {
     let options = eframe::NativeOptions {
@@ -62,15 +63,33 @@ impl LogalyzerGUI {
         for arg in args.iter().skip(1) {
             match arg.as_str() {
                 "--help" | "-h" => {
-                    // TODO: add load configuration here
                     println!("Logalyzer help:");
                     println!("--file=<path> Specify the log file to open.");
+                    println!("--config=<path> Specify the configuration file to load.");
                     std::process::exit(0);
                 }
                 _ => {
                     if arg.starts_with("--file=") {
                         let file_path = arg.trim_start_matches("--file=");
                         new_self.user_settings.file_path = file_path.to_string();
+                    }
+
+                    if arg.starts_with("--config=") {
+                        let config_path_str = arg.trim_start_matches("--config=");
+                        let config_path = Path::new(config_path_str);
+                        let user_settings_res = log_engine::configuration_load(config_path);
+                        if let Ok(loaded_user_settings) = user_settings_res {
+                            let orig_file_path = new_self.user_settings.file_path.clone();
+
+                            {
+                                new_self.user_settings = loaded_user_settings.clone();
+                                new_self.user_settings_staging = loaded_user_settings;
+                            }
+
+                            // Preserve currently opened file path.
+                            new_self.user_settings.file_path = orig_file_path.clone();
+                            new_self.user_settings_staging.file_path = orig_file_path;
+                        }
                     }
                 }
             }
@@ -349,6 +368,14 @@ impl eframe::App for LogalyzerGUI {
                         file_opened,
                         egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
                     );
+
+                    // TODO: implement comments system
+                    // TODO: option to save comments maybe?
+                    // TODO: show only commented lines
+                    // ui.add_enabled(
+                    //     file_opened,
+                    //     egui::Checkbox::new(&mut self.user_settings.commented_only, "Commented only"),
+                    // );
                 });
 
                 ui.horizontal(|ui| {
@@ -372,6 +399,7 @@ impl eframe::App for LogalyzerGUI {
                         ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
                         ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
                         // TODO: && and || support maybe
+                        // TODO: show before & show after filter
                         ui.end_row();
                     });
                 });
