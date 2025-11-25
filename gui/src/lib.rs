@@ -29,6 +29,9 @@ struct LogalyzerState {
     opened_file: Option<OpenedFileMetadata>,
     line_no_jobs: Vec<LayoutJob>,
     log_jobs: Vec<LayoutJob>,
+    search_found: Vec<log_engine::line_handlers::PointOfInterest>, // TODO: line handlers should not be exposed here...
+    search_found_showing_index: usize,
+    search_found_last_shown_index: Option<usize>,
     win_log_format_open: bool,
     panel_token_colors_open: bool,
     log_format_mode_selected: usize,
@@ -41,6 +44,9 @@ impl Default for LogalyzerState {
             opened_file: None,
             line_no_jobs: vec![LayoutJob::default()],
             log_jobs: vec![log_engine::default_log_content()],
+            search_found: Vec::new(),
+            search_found_showing_index: 0,
+            search_found_last_shown_index: None,
             win_log_format_open: false,
             panel_token_colors_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
@@ -387,9 +393,32 @@ impl eframe::App for LogalyzerGUI {
                         );
                         ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
                         ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
+
+                        let search_prev_button = ui.add_enabled(
+                            !self.state.search_found.is_empty(),
+                            egui::Button::new("Previous"),
+                        );
+                        if search_prev_button.clicked() {
+                            self.state.search_found_showing_index =
+                                if self.state.search_found_showing_index == 0 {
+                                    self.state.search_found.len() - 1
+                                } else {
+                                    self.state.search_found_showing_index - 1
+                                }
+                        }
+
+                        let search_next_button = ui.add_enabled(
+                            !self.state.search_found.is_empty(),
+                            egui::Button::new("Next"),
+                        );
+                        if search_next_button.clicked() {
+                            self.state.search_found_showing_index =
+                                (self.state.search_found_showing_index + 1)
+                                    % self.state.search_found.len();
+                        }
+
                         ui.end_row();
 
-                        // TODO: implement search
                         ui.label("Filter:");
                         ui.add_sized(
                             [300.0, 20.0],
@@ -451,22 +480,28 @@ impl eframe::App for LogalyzerGUI {
                 self.state.opened_file = loaded_file_meta;
 
                 if let Some(opened_file) = self.state.opened_file.as_ref() {
-                    if let Some((line_no_jobs, file_jobs)) =
+                    if let Some((line_no_jobs, file_jobs, _)) =
                         log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
                         self.state.log_jobs = file_jobs;
+                        self.state.search_found = Vec::new();
+                        self.state.search_found_showing_index = 0;
+                        self.state.search_found_last_shown_index = None;
                     }
                 }
             } else {
                 if self.user_settings != self.user_settings_cached {
                     self.user_settings_cached = self.user_settings.clone();
                     let opened_file = self.state.opened_file.as_ref().unwrap();
-                    if let Some((line_no_jobs, file_jobs)) =
+                    if let Some((line_no_jobs, file_jobs, points_of_interest)) =
                         log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
                         self.state.log_jobs = file_jobs;
+                        self.state.search_found = points_of_interest;
+                        self.state.search_found_showing_index = 0;
+                        self.state.search_found_last_shown_index = None;
                     }
                 }
             }
@@ -550,6 +585,45 @@ impl eframe::App for LogalyzerGUI {
                         |ui, row_range| {
                             ui.set_min_height(ui.available_height());
                             ui.scroll_with_delta(scroll_delta_keyboard);
+
+                            // If the search term is found, scroll to n-th occurence depending on the self.state.search_found_showing_index.
+                            if !self.state.search_found.is_empty() {
+                                let last_shown_different_or_init =
+                                    (self.state.search_found_last_shown_index.is_none())
+                                        || (self.state.search_found_last_shown_index.unwrap()
+                                            != self.state.search_found_showing_index);
+                                if last_shown_different_or_init {
+                                    let poi = &self.state.search_found
+                                        [self.state.search_found_showing_index];
+                                    let line_of_interest = poi.line;
+
+                                    // If we're not already showing the line, scroll to it.
+                                    if row_range.start > line_of_interest - 1
+                                        || row_range.end <= line_of_interest - 1
+                                    {
+                                        let line_height = self.user_settings.font.size;
+                                        let current_top_line_offset =
+                                            row_range.start as f32 * line_height;
+                                        let line_of_interest_offset =
+                                            (line_of_interest as f32 - 1.0) * line_height;
+                                        let delta: f32 =
+                                            line_of_interest_offset - current_top_line_offset;
+                                        // TODO: this delta should be adjusted to be more-or-less at the center of screen.
+
+                                        println!(
+                                            "Scrolling to line: {}, delta: {}",
+                                            line_of_interest, delta
+                                        );
+
+                                        ui.scroll_with_delta(egui::vec2(0.0, -delta));
+                                    } else {
+                                        println!("Scrolling to line {} done.", line_of_interest);
+                                        // Scrolling completed.
+                                        self.state.search_found_last_shown_index =
+                                            Some(self.state.search_found_showing_index);
+                                    }
+                                }
+                            }
 
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {

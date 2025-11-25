@@ -5,7 +5,7 @@ use egui::{
 
 use std::error::Error;
 
-mod line_handlers;
+pub mod line_handlers;
 pub mod user_settings;
 
 use crate::line_handlers::*;
@@ -80,14 +80,7 @@ pub fn load_file(user_settings: &UserSettings) -> Option<OpenedFileMetadata> {
     Some(opened_file_meta)
 }
 
-// Returns a tuple of (line number layout jobs, log lines layout jobs)
-pub fn recalculate_log_job(
-    opened_file: &OpenedFileMetadata,
-    user_settings: &UserSettings,
-) -> Option<(Vec<LayoutJob>, Vec<LayoutJob>)> {
-    let mut jobs_log: Vec<LayoutJob> = Vec::new();
-    let mut jobs_line_numbers: Vec<LayoutJob> = Vec::new();
-
+fn make_line_handlers(user_settings: &UserSettings) -> Vec<Box<dyn LineHandler>> {
     let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
 
     // The filter should be first, so we're not applying other handlers to lines that will be invisible anyway.
@@ -112,36 +105,67 @@ pub fn recalculate_log_job(
         }
     }
 
+    let search_line_handler = SearchLineHandler::new(user_settings);
+    if let Some(handler) = search_line_handler {
+        if handler.is_active() {
+            handlers.push(Box::from(handler));
+        }
+    }
+
+    handlers
+}
+
+// Returns a tuple of (line number layout jobs, log lines layout jobs)
+pub fn recalculate_log_job(
+    opened_file: &OpenedFileMetadata,
+    user_settings: &UserSettings,
+) -> Option<(Vec<LayoutJob>, Vec<LayoutJob>, Vec<PointOfInterest>)> {
+    let mut jobs_log: Vec<LayoutJob> = Vec::new();
+    let mut jobs_line_numbers: Vec<LayoutJob> = Vec::new();
+    let mut points_of_interest: Vec<PointOfInterest> = Vec::new();
+
+    let mut handlers = make_line_handlers(user_settings);
+
     let mut lines_visible = 0;
+
+    let default_text_format = TextFormat {
+        font_id: user_settings.font.clone(),
+        ..Default::default()
+    };
 
     for line in opened_file.content.lines() {
         let mut single_line_job = LayoutJob::default();
 
         if !handlers.is_empty() {
-            let mut line_parts: Vec<(String, TextFormat)> = vec![(
-                line.to_string(),
-                TextFormat {
-                    font_id: user_settings.font.clone(),
-                    ..Default::default()
-                },
-            )];
+            let mut line_parts: Vec<(String, TextFormat)> =
+                vec![(line.to_string(), default_text_format.clone())];
 
-            for handler in &handlers {
+            for handler in &mut handlers {
                 handler.process_line(&mut line_parts);
+
+                // This should ideally be fixed, as we're uncovering here the line handler type.
+                if handler.handler_type() == LineHandlerType::Search {
+                    let mut points_of_interest_in_line = handler.points_of_interest();
+                    if points_of_interest_in_line.is_empty() {
+                        continue;
+                    }
+
+                    // Set line number in each point of interest, as the line handler don't know it.
+                    for poi in &mut points_of_interest_in_line {
+                        poi.line = lines_visible + 1;
+                    }
+
+                    println!("Found term in line {}", lines_visible + 1);
+
+                    points_of_interest.append(&mut points_of_interest_in_line);
+                }
             }
 
             for (part_str, part_format) in line_parts {
                 single_line_job.append(&part_str, 0.0, part_format);
             }
         } else {
-            single_line_job.append(
-                line,
-                0.0,
-                TextFormat {
-                    font_id: user_settings.font.clone(),
-                    ..Default::default()
-                },
-            );
+            single_line_job.append(line, 0.0, default_text_format.clone());
         }
 
         if !single_line_job.is_empty() {
@@ -150,22 +174,16 @@ pub fn recalculate_log_job(
         }
     }
 
+    // TODO: show also original lines i.e. in case of filtering
     for line_no in 1..=lines_visible {
         let mut single_line_no_job = LayoutJob::default();
 
-        single_line_no_job.append(
-            &format!("{}", line_no),
-            0.0,
-            TextFormat {
-                font_id: user_settings.font.clone(),
-                ..Default::default()
-            },
-        );
+        single_line_no_job.append(&format!("{}", line_no), 0.0, default_text_format.clone());
 
         jobs_line_numbers.push(single_line_no_job);
     }
 
-    Some((jobs_line_numbers, jobs_log))
+    Some((jobs_line_numbers, jobs_log, points_of_interest))
 }
 
 pub fn configuration_save(file_path: &std::path::Path, user_settings: &UserSettings) {

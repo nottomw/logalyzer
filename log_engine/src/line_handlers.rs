@@ -3,9 +3,27 @@ use egui::{Color32, FontId};
 
 use crate::user_settings::UserSettings;
 
+#[derive(PartialEq)]
+pub enum LineHandlerType {
+    LogFormat,
+    TokenHilight,
+    Filter,
+    Search,
+}
+
+#[derive(Clone)]
+pub struct PointOfInterest {
+    pub line: usize,
+    pub line_part_index: usize,
+    pub line_offset: usize,
+    pub line_point_size: usize,
+}
+
 pub trait LineHandler {
+    fn handler_type(&self) -> LineHandlerType;
     fn is_active(&self) -> bool;
-    fn process_line(&self, line: &mut Vec<(String, TextFormat)>);
+    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>);
+    fn points_of_interest(&self) -> Vec<PointOfInterest>;
 }
 
 fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
@@ -54,6 +72,10 @@ impl LogFormatLineHandler {
 }
 
 impl LineHandler for LogFormatLineHandler {
+    fn handler_type(&self) -> LineHandlerType {
+        LineHandlerType::LogFormat
+    }
+
     fn is_active(&self) -> bool {
         if self.pattern_coloring.is_empty() || self.compiled_log_format_regex.as_str().is_empty() {
             return false;
@@ -62,7 +84,7 @@ impl LineHandler for LogFormatLineHandler {
         return true;
     }
 
-    fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         // Log format works only on full lines.
         assert!(line.len() == 1);
 
@@ -104,6 +126,10 @@ impl LineHandler for LogFormatLineHandler {
 
         *line = line_result;
     }
+
+    fn points_of_interest(&self) -> Vec<PointOfInterest> {
+        Vec::new()
+    }
 }
 
 pub struct TokenHilightLineHandler {
@@ -132,6 +158,10 @@ impl TokenHilightLineHandler {
 }
 
 impl LineHandler for TokenHilightLineHandler {
+    fn handler_type(&self) -> LineHandlerType {
+        LineHandlerType::TokenHilight
+    }
+
     fn is_active(&self) -> bool {
         if !self.token_colors.is_empty() {
             return true;
@@ -141,7 +171,7 @@ impl LineHandler for TokenHilightLineHandler {
     }
 
     // TODO: token hilighter should be unit tested
-    fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         let mut line_result: Vec<(String, TextFormat)> = line.clone();
 
         for (token, color) in self.token_colors.iter() {
@@ -203,6 +233,10 @@ impl LineHandler for TokenHilightLineHandler {
 
         *line = line_result;
     }
+
+    fn points_of_interest(&self) -> Vec<PointOfInterest> {
+        Vec::new()
+    }
 }
 
 pub struct FilterLineHandler {
@@ -228,6 +262,10 @@ impl FilterLineHandler {
 }
 
 impl LineHandler for FilterLineHandler {
+    fn handler_type(&self) -> LineHandlerType {
+        LineHandlerType::Filter
+    }
+
     fn is_active(&self) -> bool {
         if self.filter_term.is_empty() {
             return false;
@@ -236,7 +274,7 @@ impl LineHandler for FilterLineHandler {
         return true;
     }
 
-    fn process_line(&self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         let mut matched = false;
         for (part_str, _) in line.iter() {
             let haystack = if self.match_case {
@@ -278,5 +316,145 @@ impl LineHandler for FilterLineHandler {
                 line.clear();
             }
         }
+    }
+
+    fn points_of_interest(&self) -> Vec<PointOfInterest> {
+        Vec::new()
+    }
+}
+
+pub struct SearchLineHandler {
+    search_term: String,
+    match_case: bool,
+    whole_word: bool,
+    points_of_interest: Vec<PointOfInterest>,
+}
+
+impl SearchLineHandler {
+    pub fn new(user_settings: &UserSettings) -> Option<Self> {
+        if user_settings.search_term.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            search_term: user_settings.search_term.clone(),
+            match_case: user_settings.search_match_case,
+            whole_word: user_settings.search_whole_word,
+            points_of_interest: Vec::new(),
+        })
+    }
+}
+
+impl LineHandler for SearchLineHandler {
+    fn handler_type(&self) -> LineHandlerType {
+        LineHandlerType::Search
+    }
+
+    fn is_active(&self) -> bool {
+        if self.search_term.is_empty() {
+            return false;
+        }
+
+        return true;
+    }
+
+    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
+        self.points_of_interest.clear(); // Clear previous points of interest.
+
+        for i in 0..line.len() {
+            let part_str = &line[i].0;
+            let haystack = if self.match_case {
+                part_str.to_string()
+            } else {
+                part_str.to_lowercase()
+            };
+
+            let needle = if self.match_case {
+                self.search_term.clone()
+            } else {
+                self.search_term.to_lowercase()
+            };
+
+            let mut start = 0;
+            while let Some(pos) = haystack[start..].find(&needle) {
+                // If whole_word is enabled, verify the match is a whole word.
+                if self.whole_word {
+                    let before_char = if pos + start == 0 {
+                        ' ' // Treat start of string as non-alphanumeric
+                    } else {
+                        haystack.chars().nth(pos + start - 1).unwrap()
+                    };
+                    let after_char = if pos + start + needle.len() >= haystack.len() {
+                        ' ' // Treat end of string as non-alphanumeric
+                    } else {
+                        haystack.chars().nth(pos + start + needle.len()).unwrap()
+                    };
+
+                    if before_char.is_alphanumeric() || after_char.is_alphanumeric() {
+                        start += pos + 1;
+                        continue; // Not a whole word match
+                    }
+                }
+
+                self.points_of_interest.push(PointOfInterest {
+                    line: 0, // This will be set by the caller,
+                    line_part_index: i,
+                    line_offset: pos + start,
+                    line_point_size: needle.len(),
+                });
+
+                start += pos + needle.len();
+            }
+
+            // Hilight the search terms.
+            if !self.points_of_interest.is_empty() {
+                let mut new_line_parts: Vec<(String, TextFormat)> = Vec::new();
+                let original_text_format = &line[i].1;
+
+                let mut last_index = 0;
+                for poi in self
+                    .points_of_interest
+                    .iter()
+                    .filter(|p| p.line_part_index == i)
+                {
+                    // Append text before the match.
+                    if poi.line_offset > last_index {
+                        new_line_parts.push((
+                            part_str[last_index..poi.line_offset].to_string(),
+                            original_text_format.clone(),
+                        ));
+                    }
+
+                    // Append the matched term with highlight.
+                    let mut highlight_format = original_text_format.clone();
+                    highlight_format.background = Color32::YELLOW; // Highlight color
+                    new_line_parts.push((
+                        part_str[poi.line_offset..poi.line_offset + poi.line_point_size]
+                            .to_string(),
+                        highlight_format,
+                    ));
+
+                    last_index = poi.line_offset + poi.line_point_size;
+                }
+
+                // Append any remaining text after the last match.
+                if last_index < part_str.len() {
+                    new_line_parts.push((
+                        part_str[last_index..].to_string(),
+                        original_text_format.clone(),
+                    ));
+                }
+
+                // Replace the original part with the new parts.
+                line.remove(i);
+                for (j, new_part) in new_line_parts.into_iter().enumerate() {
+                    line.insert(i + j, new_part);
+                }
+            }
+        }
+    }
+
+    fn points_of_interest(&self) -> Vec<PointOfInterest> {
+        self.points_of_interest.clone()
     }
 }
