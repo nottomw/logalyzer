@@ -169,8 +169,6 @@ pub fn recalculate_log_job(
                         poi.line = lines_visible + 1;
                     }
 
-                    println!("Found term in line {}", lines_visible + 1);
-
                     points_of_interest.append(&mut points_of_interest_in_line);
                 }
             }
