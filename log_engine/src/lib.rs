@@ -136,6 +136,7 @@ pub fn recalculate_log_job(
     let mut handlers = make_line_handlers(user_settings);
 
     let mut lines_visible = 0;
+    let mut lines_total_counter = 0;
 
     let default_text_format = TextFormat {
         font_id: user_settings.font.clone(),
@@ -143,6 +144,8 @@ pub fn recalculate_log_job(
     };
 
     for line in opened_file.content.lines() {
+        lines_total_counter += 1;
+
         let mut single_line_job = LayoutJob::default();
 
         if !handlers.is_empty() {
@@ -180,16 +183,27 @@ pub fn recalculate_log_job(
         if !single_line_job.is_empty() {
             lines_visible += 1;
             jobs_log.push(single_line_job);
+
+            // Create and add a job for line numbers.
+            let mut single_line_number_job = LayoutJob::default();
+
+            // If we filter something show also the original line numbers.
+            if lines_visible != lines_total_counter {
+                single_line_number_job.append(
+                    &format!("{} ({})", lines_visible, lines_total_counter),
+                    0.0,
+                    default_text_format.clone(),
+                );
+            } else {
+                single_line_number_job.append(
+                    &format!("{}", lines_visible),
+                    0.0,
+                    default_text_format.clone(),
+                );
+            }
+
+            jobs_line_numbers.push(single_line_number_job);
         }
-    }
-
-    // TODO: show also original lines i.e. in case of filtering
-    for line_no in 1..=lines_visible {
-        let mut single_line_no_job = LayoutJob::default();
-
-        single_line_no_job.append(&format!("{}", line_no), 0.0, default_text_format.clone());
-
-        jobs_line_numbers.push(single_line_no_job);
     }
 
     Some((jobs_line_numbers, jobs_log, points_of_interest))
