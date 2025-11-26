@@ -36,6 +36,8 @@ struct LogalyzerState {
     win_log_format_open: bool,
     panel_token_colors_open: bool,
     log_format_mode_selected: usize,
+    lines_wrapped: usize,
+    log_scroll_area_width: f32,
 }
 
 impl Default for LogalyzerState {
@@ -51,6 +53,8 @@ impl Default for LogalyzerState {
             win_log_format_open: false,
             panel_token_colors_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
+            lines_wrapped: 0,
+            log_scroll_area_width: 0.0,
         }
     }
 }
@@ -549,11 +553,57 @@ impl eframe::App for LogalyzerGUI {
 
                                 ui.vertical(|ui| {
                                     for row_index in row_range {
-                                        if let Some(job) = self.state.line_no_jobs.get(row_index) {
-                                            let job_cloned = job.clone();
+                                        let mut line_wrapped_by = 0;
+                                        if self.user_settings.wrap_text {
+                                            if let Some(job) = self.state.log_jobs.get(row_index) {
+                                                let mut job_with_wrapping = job.clone();
+                                                job_with_wrapping.wrap = TextWrapping {
+                                                    break_anywhere: true,
+                                                    max_width: if self.state.log_scroll_area_width
+                                                        == 0.0
+                                                    {
+                                                        ui.available_width() - 1.0
+                                                    } else {
+                                                        self.state.log_scroll_area_width
+                                                    },
+                                                    ..Default::default()
+                                                };
+
+                                                let galley = ctx.fonts_mut(|fonts| {
+                                                    fonts.layout_job(job_with_wrapping.clone())
+                                                });
+                                                let wrap_amount = galley.rows.len();
+                                                line_wrapped_by = wrap_amount - 1;
+                                            }
+                                        }
+
+                                        if let Some(job) = self
+                                            .state
+                                            .line_no_jobs
+                                            .get(row_index - self.state.lines_wrapped)
+                                        {
+                                            let mut job_cloned = job.clone();
+
+                                            // Hack to add empty line numbers for wrapped lines, as
+                                            // it's painful to do it properly with strange line spacings in single label.
+                                            if line_wrapped_by > 0 {
+                                                let text_format = egui::TextFormat {
+                                                    font_id: self.user_settings.font.clone(),
+                                                    ..Default::default()
+                                                };
+
+                                                job_cloned.append(
+                                                    "\n".repeat(line_wrapped_by).as_str(),
+                                                    0.0,
+                                                    text_format,
+                                                );
+                                            }
+
                                             ui.label(job_cloned);
                                         }
                                     }
+
+                                    self.state.lines_wrapped = 0;
                                 });
 
                                 width_left_after_adding_line_numbers = ui.available_width();
@@ -609,14 +659,10 @@ impl eframe::App for LogalyzerGUI {
                                             row_range.start as f32 * line_height;
                                         let line_of_interest_offset =
                                             (line_of_interest as f32 - 1.0) * line_height;
+
+                                        // TODO: this delta should be adjusted to be more-or-less at the center of screen.
                                         let delta: f32 =
                                             line_of_interest_offset - current_top_line_offset;
-                                        // TODO: this delta should be adjusted to be more-or-less at the center of screen.
-
-                                        println!(
-                                            "Scrolling to line: {}, delta: {}",
-                                            line_of_interest, delta
-                                        );
 
                                         ui.scroll_with_delta(egui::vec2(0.0, -delta));
                                     } else {
@@ -643,7 +689,7 @@ impl eframe::App for LogalyzerGUI {
                                         job_cloned.wrap = text_wrapping.clone();
 
                                         let log_line_resp = ui.add(
-                                             egui::Label::new(job_cloned)
+                                            egui::Label::new(job_cloned)
                                                 .wrap_mode(egui::TextWrapMode::Wrap),
                                         );
 
@@ -657,6 +703,7 @@ impl eframe::App for LogalyzerGUI {
                     );
 
                 self.state.vertical_scroll_offset = scroll_area.state.offset.y;
+                self.state.log_scroll_area_width = scroll_area.content_size.x;
             });
         });
     }

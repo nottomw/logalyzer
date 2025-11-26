@@ -124,6 +124,7 @@ fn make_line_handlers(user_settings: &UserSettings) -> Vec<Box<dyn LineHandler>>
 }
 
 // Returns a tuple of (line number layout jobs, log lines layout jobs)
+// TODO: this should not return anything related to LayoutJob, Vec<Vec<String, TextFormat>> would be better.
 pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
     user_settings: &UserSettings,
