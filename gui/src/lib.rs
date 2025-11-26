@@ -25,6 +25,12 @@ pub fn run_gui(args: Vec<String>) {
     }
 }
 
+enum FocusRequests {
+    None,
+    Search,
+    Filter,
+}
+
 struct LogalyzerState {
     vertical_scroll_offset: f32,
     opened_file: Option<OpenedFileMetadata>,
@@ -38,6 +44,7 @@ struct LogalyzerState {
     log_format_mode_selected: usize,
     lines_wrapped: usize,
     log_scroll_area_width: f32,
+    focus_request: FocusRequests,
 }
 
 impl Default for LogalyzerState {
@@ -55,6 +62,7 @@ impl Default for LogalyzerState {
             log_format_mode_selected: 0, // 0 means manual regex
             lines_wrapped: 0,
             log_scroll_area_width: 0.0,
+            focus_request: FocusRequests::None,
         }
     }
 }
@@ -107,6 +115,22 @@ impl LogalyzerGUI {
         }
 
         new_self
+    }
+
+    fn handle_focus_keypresses(&mut self, ui: &egui::Ui) {
+        // Ctrl + F => focus search box
+        // Ctrl + G => focus filter box
+
+        let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
+        if ctrl_pressed {
+            if ui.input(|i| i.key_pressed(egui::Key::F)) {
+                self.state.focus_request = FocusRequests::Search;
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::G)) {
+                self.state.focus_request = FocusRequests::Filter;
+            }
+        }
     }
 
     fn get_scroll_delta_based_on_keypress(
@@ -175,6 +199,8 @@ impl eframe::App for LogalyzerGUI {
             .max_height(bottom_panel_height)
             .resizable(false)
             .show(ctx, |ui| {
+                self.handle_focus_keypresses(ui);
+
                 ui.horizontal(|ui| {
                     let button_file = ui.button("Open File");
                     if button_file.clicked() {
@@ -394,10 +420,17 @@ impl eframe::App for LogalyzerGUI {
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.add_sized(search_and_filter_label_size, egui::Label::new("Search:"));
-                        ui.add_sized(
+                        let textedit_search = ui.add_sized(
                             search_and_filter_input_size,
-                            egui::TextEdit::singleline(&mut self.user_settings.search_term),
+                            egui::TextEdit::singleline(&mut self.user_settings.search_term)
+                                .id_salt("search_input"),
                         );
+
+                        if let FocusRequests::Search = self.state.focus_request {
+                            textedit_search.request_focus();
+                            self.state.focus_request = FocusRequests::None;
+                        }
+
                         ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
                         ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
 
@@ -427,10 +460,17 @@ impl eframe::App for LogalyzerGUI {
 
                     ui.horizontal(|ui| {
                         ui.add_sized(search_and_filter_label_size, egui::Label::new("Filter:"));
-                        ui.add_sized(
+                        let textedit_filter = ui.add_sized(
                             search_and_filter_input_size,
-                            egui::TextEdit::singleline(&mut self.user_settings.filter_term),
+                            egui::TextEdit::singleline(&mut self.user_settings.filter_term)
+                                .id_salt("filter_input"),
                         );
+
+                        if let FocusRequests::Filter = self.state.focus_request {
+                            textedit_filter.request_focus();
+                            self.state.focus_request = FocusRequests::None;
+                        }
+
                         ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
                         ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
                         ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
@@ -665,7 +705,6 @@ impl eframe::App for LogalyzerGUI {
 
                                         ui.scroll_with_delta(egui::vec2(0.0, -delta));
                                     } else {
-                                        println!("Scrolling to line {} done.", line_of_interest);
                                         // Scrolling completed.
                                         self.state.search_found_last_shown_index =
                                             Some(self.state.search_found_showing_index);
