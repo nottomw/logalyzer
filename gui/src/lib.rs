@@ -642,10 +642,14 @@ impl eframe::App for LogalyzerGUI {
                                         let mut job_cloned = job.clone();
                                         job_cloned.wrap = text_wrapping.clone();
 
-                                        ui.add(
-                                            egui::Label::new(job_cloned)
+                                        let log_line_resp = ui.add(
+                                             egui::Label::new(job_cloned)
                                                 .wrap_mode(egui::TextWrapMode::Wrap),
                                         );
+
+                                        if log_line_resp.hovered() {
+                                            log_line_resp.highlight();
+                                        }
                                     }
                                 }
                             });
