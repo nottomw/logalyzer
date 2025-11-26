@@ -30,7 +30,7 @@ struct LogalyzerState {
     opened_file: Option<OpenedFileMetadata>,
     line_no_jobs: Vec<LayoutJob>,
     log_jobs: Vec<LayoutJob>,
-    search_found: Vec<log_engine::line_handlers::PointOfInterest>, // TODO: line handlers should not be exposed here...
+    search_found: Vec<log_engine::PointOfInterest>,
     search_found_showing_index: usize,
     search_found_last_shown_index: Option<usize>,
     win_log_format_open: bool,

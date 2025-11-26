@@ -11,6 +11,14 @@ pub mod user_settings;
 use crate::line_handlers::*;
 use crate::user_settings::*;
 
+#[derive(Clone)]
+pub struct PointOfInterest {
+    pub line: usize,
+    pub line_part_index: usize,
+    pub line_offset: usize,
+    pub line_point_size: usize,
+}
+
 pub struct OpenedFileMetadata {
     pub path: String,
     pub content: String,

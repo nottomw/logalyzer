@@ -2,6 +2,7 @@ use egui::text::TextFormat;
 use egui::{Color32, FontId};
 
 use crate::user_settings::UserSettings;
+use crate::PointOfInterest;
 
 #[derive(PartialEq)]
 pub enum LineHandlerType {
@@ -9,14 +10,6 @@ pub enum LineHandlerType {
     TokenHilight,
     Filter,
     Search,
-}
-
-#[derive(Clone)]
-pub struct PointOfInterest {
-    pub line: usize,
-    pub line_part_index: usize,
-    pub line_offset: usize,
-    pub line_point_size: usize,
 }
 
 pub trait LineHandler {
