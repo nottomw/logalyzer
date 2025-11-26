@@ -129,7 +129,7 @@ impl LogalyzerGUI {
 
         // These should be pretty big steps, so the user can navigate quickly.
         let scroll_delta_vertical = height * 0.4;
-        let scroll_delta_horizontal = width * 0.4;
+        let scroll_delta_horizontal = width * 0.3;
 
         if !anything_focused {
             if ui.input(|i| i.key_pressed(egui::Key::A)) {
@@ -369,7 +369,6 @@ impl eframe::App for LogalyzerGUI {
                         }
                     }
 
-                    // TODO: wrapping currently breaks the line numbers, should be fixed
                     ui.add_enabled(
                         file_opened,
                         egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
