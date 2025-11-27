@@ -191,7 +191,7 @@ impl LogalyzerGUI {
             if let Some(job) = self.state.log_jobs.get(row_index) {
                 let mut job_with_wrapping = job.clone();
                 job_with_wrapping.wrap = TextWrapping {
-                    break_anywhere: true,
+                    break_anywhere: false,
                     max_width: if self.state.log_scroll_area_width == 0.0 {
                         ui.available_width() - 1.0
                     } else {
@@ -750,7 +750,7 @@ impl eframe::App for LogalyzerGUI {
 
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {
-                                text_wrapping.break_anywhere = true;
+                                text_wrapping.break_anywhere = false;
                             }
 
                             text_wrapping.max_width = scroll_area_width_max;
