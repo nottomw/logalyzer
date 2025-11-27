@@ -127,7 +127,7 @@ impl LogalyzerGUI {
                 self.state.focus_request = FocusRequests::Search;
             }
 
-            if ui.input(|i| i.key_pressed(egui::Key::G)) {
+            if ui.input(|i| i.key_pressed(egui::Key::I)) {
                 self.state.focus_request = FocusRequests::Filter;
             }
         }

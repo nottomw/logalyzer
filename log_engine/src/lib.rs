@@ -44,8 +44,8 @@ pub fn default_log_content() -> LayoutJob {
     Please select a log file or a stream to open.\n\
     Please use the settings panel to configure log formatting and highlighting options.\n\n\
     You can use WASD to navigate quickly through the log file.\n\
-    Ctrl+F: focus on search input\n\
-    Ctrl+G: focus on filter input\n";
+    Ctrl + F: focus on search input\n\
+    Ctrl + I: focus on filter input\n";
 
     job.append(
         welcome_message,
