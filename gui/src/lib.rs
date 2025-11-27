@@ -120,6 +120,7 @@ impl LogalyzerGUI {
     fn handle_focus_keypresses(&mut self, ui: &egui::Ui) {
         // Ctrl + F => focus search box
         // Ctrl + G => focus filter box
+        // Ctrl + T => open tokens panel
 
         let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
         if ctrl_pressed {
@@ -129,6 +130,10 @@ impl LogalyzerGUI {
 
             if ui.input(|i| i.key_pressed(egui::Key::I)) {
                 self.state.focus_request = FocusRequests::Filter;
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::T)) {
+                self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
             }
         }
     }

@@ -45,7 +45,8 @@ pub fn default_log_content() -> LayoutJob {
     Please use the settings panel to configure log formatting and highlighting options.\n\n\
     You can use WASD to navigate quickly through the log file.\n\
     Ctrl + F: focus on search input\n\
-    Ctrl + I: focus on filter input\n";
+    Ctrl + I: focus on filter input\n\
+    Ctrl + T: toggle token colors panel\n";
 
     job.append(
         welcome_message,
