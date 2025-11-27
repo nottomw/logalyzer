@@ -1,8 +1,8 @@
 use egui::text::TextFormat;
 use egui::{Color32, FontId};
 
-use crate::user_settings::UserSettings;
 use crate::PointOfInterest;
+use crate::user_settings::UserSettings;
 
 #[derive(PartialEq)]
 pub enum LineHandlerType {
@@ -111,6 +111,7 @@ impl LineHandler for LogFormatLineHandler {
             let group_str_coloring = self.pattern_coloring[i - 1];
             let mut text_format =
                 color_to_text_format(group_str_coloring, self.default_font.clone());
+            // TODO: maybe log formater should color the text and not the background
 
             text_format.color = line_original_format.color; // Preserve original text color.
 
