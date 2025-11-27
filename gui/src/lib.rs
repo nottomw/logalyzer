@@ -185,6 +185,8 @@ impl LogalyzerGUI {
     fn determine_wrapping(&self, ctx: &egui::Context, ui: &egui::Ui, row_index: usize) -> usize {
         let mut line_wrapped_by = 0;
 
+        // This is a pretty costly operation, could be cached.
+
         if self.user_settings.wrap_text {
             if let Some(job) = self.state.log_jobs.get(row_index) {
                 let mut job_with_wrapping = job.clone();
