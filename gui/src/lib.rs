@@ -205,6 +205,117 @@ impl LogalyzerGUI {
 
         line_wrapped_by
     }
+
+    fn show_log_format_window(&mut self, ctx: &egui::Context) {
+        if self.state.win_log_format_open {
+            egui::Window::new("Log Format")
+                .auto_sized()
+                .show(ctx, |ui| {
+                    ui.vertical(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Please select log format mode:");
+                            egui::ComboBox::from_id_salt("log_format_mode")
+                                .selected_text(match self.state.log_format_mode_selected {
+                                    0 => "Manual Regex",
+                                    1 => "[number.number] log message",
+                                    2 => "YYYY-MM-DD HH:MM:SS log message",
+                                    _ => "Manual Regex",
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.state.log_format_mode_selected,
+                                        0,
+                                        "Manual Regex",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.state.log_format_mode_selected,
+                                        1,
+                                        "[number.number] log message",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.state.log_format_mode_selected,
+                                        2,
+                                        "YYYY-MM-DD HH:MM:SS log message",
+                                    );
+                                });
+                        });
+
+                        self.user_settings_staging.log_format.pattern = match {
+                            self.state.log_format_mode_selected
+                        } {
+                            0 => self.user_settings_staging.log_format.pattern.clone(),
+                            1 => r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$".to_string(),
+                            2 => r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})(\s+)(.*)$".to_string(),
+                            _ => r"".to_string(), // impossible
+                        };
+
+                        let mut compiled_regex_valid = false;
+
+                        egui::Grid::new("log_format_grid").show(ui, |ui| {
+                            ui.label("Log Format Regex:");
+                            ui.add_sized(
+                                [400.0, 20.0],
+                                egui::TextEdit::singleline(
+                                    &mut self.user_settings_staging.log_format.pattern,
+                                ),
+                            );
+                            ui.end_row();
+
+                            let compiled_regex =
+                                regex::Regex::new(&self.user_settings_staging.log_format.pattern);
+                            compiled_regex_valid = compiled_regex.is_ok();
+                            if !compiled_regex_valid {
+                                ui.colored_label(egui::Color32::RED, "Regex invalid");
+                                ui.end_row();
+                            } else {
+                                ui.colored_label(egui::Color32::GREEN, "Regex valid");
+                                ui.end_row();
+
+                                let regex = compiled_regex.unwrap();
+                                let capture_group_count = regex.captures_len() - 1;
+
+                                for i in 0..capture_group_count {
+                                    ui.label(format!("Group #{} Color:", i + 1));
+
+                                    self.user_settings_staging
+                                        .log_format
+                                        .pattern_coloring
+                                        .resize(capture_group_count, egui::Color32::RED);
+
+                                    ui.color_edit_button_srgba(
+                                        &mut self.user_settings_staging.log_format.pattern_coloring
+                                            [i],
+                                    );
+                                    ui.end_row();
+                                }
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            let button_ok =
+                                ui.add_enabled(compiled_regex_valid, egui::Button::new("OK"));
+                            if button_ok.clicked() {
+                                self.state.win_log_format_open = false;
+                                self.user_settings.log_format =
+                                    self.user_settings_staging.log_format.clone();
+                            }
+
+                            let button_apply =
+                                ui.add_enabled(compiled_regex_valid, egui::Button::new("Apply"));
+                            if button_apply.clicked() {
+                                self.user_settings.log_format =
+                                    self.user_settings_staging.log_format.clone();
+                            }
+
+                            let button_cancel = ui.button("Cancel");
+                            if button_cancel.clicked() {
+                                self.state.win_log_format_open = false;
+                            }
+                        });
+                    });
+                });
+        }
+    }
 }
 
 impl Default for LogalyzerGUI {
@@ -248,128 +359,6 @@ impl eframe::App for LogalyzerGUI {
                     let button_log_format = ui.button("Log Format");
                     if button_log_format.clicked() {
                         self.state.win_log_format_open = true;
-                    }
-
-                    if self.state.win_log_format_open {
-                        egui::Window::new("Log Format")
-                            .auto_sized()
-                            .show(ctx, |ui| {
-                                ui.vertical(|ui| {
-                                    ui.horizontal(|ui| {
-                                        ui.label("Please select log format mode:");
-                                        egui::ComboBox::from_id_salt("log_format_mode")
-                                            .selected_text(
-                                                match self.state.log_format_mode_selected {
-                                                    0 => "Manual Regex",
-                                                    1 => "[number.number] log message",
-                                                    2 => "YYYY-MM-DD HH:MM:SS log message",
-                                                    _ => "Manual Regex",
-                                                },
-                                            )
-                                            .show_ui(ui, |ui| {
-                                                ui.selectable_value(
-                                                    &mut self.state.log_format_mode_selected,
-                                                    0,
-                                                    "Manual Regex",
-                                                );
-                                                ui.selectable_value(
-                                                    &mut self.state.log_format_mode_selected,
-                                                    1,
-                                                    "[number.number] log message",
-                                                );
-                                                ui.selectable_value(
-                                                    &mut self.state.log_format_mode_selected,
-                                                    2,
-                                                    "YYYY-MM-DD HH:MM:SS log message",
-                                                );
-                                            });
-                                    });
-
-                                    self.user_settings_staging.log_format.pattern = match {
-                                        self.state.log_format_mode_selected
-                                    } {
-                                        0 => self.user_settings_staging.log_format.pattern.clone(),
-                                        1 => r"^(\[\s*[0-9]*)(\.)([0-9]*\])(\s.*)$".to_string(),
-                                        2 => r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})(\s+)(.*)$"
-                                            .to_string(),
-                                        _ => r"".to_string(), // impossible
-                                    };
-
-                                    let mut compiled_regex_valid = false;
-
-                                    egui::Grid::new("log_format_grid").show(ui, |ui| {
-                                        ui.label("Log Format Regex:");
-                                        ui.add_sized(
-                                            [400.0, 20.0],
-                                            egui::TextEdit::singleline(
-                                                &mut self.user_settings_staging.log_format.pattern,
-                                            ),
-                                        );
-                                        ui.end_row();
-
-                                        let compiled_regex = regex::Regex::new(
-                                            &self.user_settings_staging.log_format.pattern,
-                                        );
-                                        compiled_regex_valid = compiled_regex.is_ok();
-                                        if !compiled_regex_valid {
-                                            ui.colored_label(egui::Color32::RED, "Regex invalid");
-                                            ui.end_row();
-                                        } else {
-                                            ui.colored_label(egui::Color32::GREEN, "Regex valid");
-                                            ui.end_row();
-
-                                            let regex = compiled_regex.unwrap();
-                                            let capture_group_count = regex.captures_len() - 1;
-
-                                            for i in 0..capture_group_count {
-                                                ui.label(format!("Group #{} Color:", i + 1));
-
-                                                self.user_settings_staging
-                                                    .log_format
-                                                    .pattern_coloring
-                                                    .resize(
-                                                        capture_group_count,
-                                                        egui::Color32::RED,
-                                                    );
-
-                                                ui.color_edit_button_srgba(
-                                                    &mut self
-                                                        .user_settings_staging
-                                                        .log_format
-                                                        .pattern_coloring[i],
-                                                );
-                                                ui.end_row();
-                                            }
-                                        }
-                                    });
-
-                                    ui.horizontal(|ui| {
-                                        let button_ok = ui.add_enabled(
-                                            compiled_regex_valid,
-                                            egui::Button::new("OK"),
-                                        );
-                                        if button_ok.clicked() {
-                                            self.state.win_log_format_open = false;
-                                            self.user_settings.log_format =
-                                                self.user_settings_staging.log_format.clone();
-                                        }
-
-                                        let button_apply = ui.add_enabled(
-                                            compiled_regex_valid,
-                                            egui::Button::new("Apply"),
-                                        );
-                                        if button_apply.clicked() {
-                                            self.user_settings.log_format =
-                                                self.user_settings_staging.log_format.clone();
-                                        }
-
-                                        let button_cancel = ui.button("Cancel");
-                                        if button_cancel.clicked() {
-                                            self.state.win_log_format_open = false;
-                                        }
-                                    });
-                                });
-                            });
                     }
 
                     let button_rules = ui.button("Token Rules");
@@ -443,6 +432,8 @@ impl eframe::App for LogalyzerGUI {
                     //     egui::Checkbox::new(&mut self.user_settings.commented_only, "Commented only"),
                     // );
                 });
+
+                self.show_log_format_window(ctx);
 
                 let search_and_filter_label_size = Vec2::new(80.0, 20.0);
                 let search_and_filter_input_size = Vec2::new(300.0, 20.0);
