@@ -79,7 +79,7 @@ impl LineHandler for LogFormatLineHandler {
 
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         // Log format works only on full lines.
-        assert!(line.len() == 1);
+        assert!(line.len() == 1); // TODO: this will assert if filtering active!!!
 
         let line_full = &line[0].0;
         let line_original_format = &line[0].1;
