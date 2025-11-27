@@ -117,7 +117,7 @@ impl LogalyzerGUI {
         new_self
     }
 
-    fn handle_focus_keypresses(&mut self, ui: &egui::Ui) {
+    fn check_keyboard_shortcuts(&mut self, ui: &egui::Ui) {
         // Ctrl + F => focus search box
         // Ctrl + G => focus filter box
         // Ctrl + T => open tokens panel
@@ -229,7 +229,7 @@ impl eframe::App for LogalyzerGUI {
             .max_height(bottom_panel_height)
             .resizable(false)
             .show(ctx, |ui| {
-                self.handle_focus_keypresses(ui);
+                self.check_keyboard_shortcuts(ui);
 
                 ui.horizontal(|ui| {
                     let button_file = ui.button("Open File");
