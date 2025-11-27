@@ -512,40 +512,8 @@ impl LogalyzerGUI {
                 });
         }
     }
-}
 
-impl Default for LogalyzerGUI {
-    fn default() -> Self {
-        Self {
-            user_settings: UserSettings::default(),
-            user_settings_cached: UserSettings::default(),
-            user_settings_staging: UserSettings::default(),
-            state: LogalyzerState::default(),
-        }
-    }
-}
-
-impl eframe::App for LogalyzerGUI {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let available_rect = ctx.available_rect();
-
-        let bottom_panel_height = available_rect.height() * 0.2;
-        let central_panel_height = available_rect.height() - bottom_panel_height;
-
-        egui::TopBottomPanel::bottom("controls")
-            .max_height(bottom_panel_height)
-            .resizable(false)
-            .show(ctx, |ui| {
-                self.check_keyboard_shortcuts(ui);
-
-                self.show_bottom_panel_first_row(ui);
-                self.show_bottom_panel_search_and_filter(ui);
-
-                self.show_log_format_window(ctx);
-            });
-
-        self.show_token_colors_panel(ctx);
-
+    fn recalculate_logfile_display(&mut self) {
         // TODO: log job recalc should be offloaded to a separate thread
         if self.user_settings.file_path.is_empty() == false {
             if !self.state.opened_file.is_some()
@@ -582,6 +550,41 @@ impl eframe::App for LogalyzerGUI {
                 }
             }
         }
+    }
+}
+
+impl Default for LogalyzerGUI {
+    fn default() -> Self {
+        Self {
+            user_settings: UserSettings::default(),
+            user_settings_cached: UserSettings::default(),
+            user_settings_staging: UserSettings::default(),
+            state: LogalyzerState::default(),
+        }
+    }
+}
+
+impl eframe::App for LogalyzerGUI {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let available_rect = ctx.available_rect();
+
+        let bottom_panel_height = available_rect.height() * 0.2;
+        let central_panel_height = available_rect.height() - bottom_panel_height;
+
+        egui::TopBottomPanel::bottom("controls")
+            .max_height(bottom_panel_height)
+            .resizable(false)
+            .show(ctx, |ui| {
+                self.check_keyboard_shortcuts(ui);
+
+                self.show_bottom_panel_first_row(ui);
+                self.show_bottom_panel_search_and_filter(ui);
+            });
+
+        self.show_log_format_window(ctx);
+        self.show_token_colors_panel(ctx);
+
+        self.recalculate_logfile_display();
 
         let visible_log_lines = self.state.line_no_jobs.len();
 
