@@ -1,9 +1,9 @@
 use core::f32;
 
 use eframe::egui;
-use egui::Vec2;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
+use egui::{Vec2, scroll_area};
 use log_engine::OpenedFileMetadata;
 use log_engine::user_settings::UserSettings;
 use std::path::Path;
@@ -72,6 +72,7 @@ struct LogalyzerGUI {
     user_settings_cached: UserSettings, // The only purpose of this is to detect changes and trigger repaints.
     user_settings_staging: UserSettings, // For editing, after OK/Apply is pressed part of this is copied to user_settings.
     state: LogalyzerState,
+    scroll_sources_allowed: scroll_area::ScrollSource,
 }
 
 impl LogalyzerGUI {
@@ -551,6 +552,79 @@ impl LogalyzerGUI {
             }
         }
     }
+
+    fn show_line_numbers_scrollarea(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        visible_log_lines: usize,
+        scroll_area_width_max: &mut f32,
+        width_left_after_adding_line_numbers: &mut f32,
+    ) {
+        let mut opened_file_max_line_chars = 0;
+        if let Some(opened_file) = &self.state.opened_file {
+            opened_file_max_line_chars = opened_file.content_max_line_chars;
+        }
+
+        // Line numbers scroll area.
+        if opened_file_max_line_chars > 0 {
+            egui::ScrollArea::vertical()
+                .id_salt("line_numbers")
+                .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
+                .vertical_scroll_offset(self.state.vertical_scroll_offset)
+                .animated(false)
+                .scroll_source(self.scroll_sources_allowed)
+                .show_rows(
+                    ui,
+                    self.user_settings.font.size,
+                    visible_log_lines,
+                    |ui, row_range| {
+                        ui.set_min_height(ui.available_height());
+
+                        ui.vertical(|ui| {
+                            for row_index in row_range {
+                                let line_wrapped_by = self.determine_wrapping(ctx, ui, row_index);
+
+                                if let Some(job) = self
+                                    .state
+                                    .line_no_jobs
+                                    .get(row_index - self.state.lines_wrapped)
+                                {
+                                    let mut job_cloned = job.clone();
+
+                                    // Hack to add empty line numbers for wrapped lines, as
+                                    // it's painful to do it properly with strange line spacings in single label.
+                                    if line_wrapped_by > 0 {
+                                        let text_format = egui::TextFormat {
+                                            font_id: self.user_settings.font.clone(),
+                                            ..Default::default()
+                                        };
+
+                                        job_cloned.append(
+                                            "\n".repeat(line_wrapped_by).as_str(),
+                                            0.0,
+                                            text_format,
+                                        );
+                                    }
+
+                                    ui.label(job_cloned);
+                                }
+                            }
+
+                            self.state.lines_wrapped = 0;
+                        });
+
+                        *width_left_after_adding_line_numbers = ui.available_width();
+                    },
+                );
+
+            *scroll_area_width_max = if self.user_settings.wrap_text {
+                *width_left_after_adding_line_numbers
+            } else {
+                (opened_file_max_line_chars as f32) * 8.0 + 50.0
+            };
+        }
+    }
 }
 
 impl Default for LogalyzerGUI {
@@ -560,6 +634,11 @@ impl Default for LogalyzerGUI {
             user_settings_cached: UserSettings::default(),
             user_settings_staging: UserSettings::default(),
             state: LogalyzerState::default(),
+            scroll_sources_allowed: scroll_area::ScrollSource {
+                scroll_bar: true,
+                drag: false,
+                mouse_wheel: true,
+            },
         }
     }
 }
@@ -593,85 +672,15 @@ impl eframe::App for LogalyzerGUI {
 
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                 let mut width_left_after_adding_line_numbers = ui.available_width();
+                let mut scroll_area_width_max = ui.available_width();
 
-                let mut scroll_area_width_max = width_left_after_adding_line_numbers;
-
-                let scroll_sources_allowed = egui::scroll_area::ScrollSource {
-                    scroll_bar: true,
-                    drag: false,
-                    mouse_wheel: true,
-                };
-
-                let mut opened_file_max_line_chars = 0;
-                let mut line_numbers = String::new();
-                if self.state.opened_file.is_some() {
-                    let opened_file = self.state.opened_file.as_ref().unwrap();
-
-                    for line_num in 1..=opened_file.content_line_count {
-                        line_numbers.push_str(&format!("{}\n", line_num));
-                    }
-                    opened_file_max_line_chars = opened_file.content_max_line_chars;
-                }
-
-                // Line numbers scroll area.
-                if opened_file_max_line_chars > 0 {
-                    egui::ScrollArea::vertical()
-                        .id_salt("line_numbers")
-                        .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
-                        .vertical_scroll_offset(self.state.vertical_scroll_offset)
-                        .animated(false)
-                        .scroll_source(scroll_sources_allowed)
-                        .show_rows(
-                            ui,
-                            self.user_settings.font.size,
-                            visible_log_lines,
-                            |ui, row_range| {
-                                ui.set_min_height(ui.available_height());
-
-                                ui.vertical(|ui| {
-                                    for row_index in row_range {
-                                        let line_wrapped_by =
-                                            self.determine_wrapping(ctx, ui, row_index);
-
-                                        if let Some(job) = self
-                                            .state
-                                            .line_no_jobs
-                                            .get(row_index - self.state.lines_wrapped)
-                                        {
-                                            let mut job_cloned = job.clone();
-
-                                            // Hack to add empty line numbers for wrapped lines, as
-                                            // it's painful to do it properly with strange line spacings in single label.
-                                            if line_wrapped_by > 0 {
-                                                let text_format = egui::TextFormat {
-                                                    font_id: self.user_settings.font.clone(),
-                                                    ..Default::default()
-                                                };
-
-                                                job_cloned.append(
-                                                    "\n".repeat(line_wrapped_by).as_str(),
-                                                    0.0,
-                                                    text_format,
-                                                );
-                                            }
-
-                                            ui.label(job_cloned);
-                                        }
-                                    }
-
-                                    self.state.lines_wrapped = 0;
-                                });
-
-                                width_left_after_adding_line_numbers = ui.available_width();
-                            },
-                        );
-
-                    scroll_area_width_max = if self.user_settings.wrap_text {
-                        width_left_after_adding_line_numbers
-                    } else {
-                        (opened_file_max_line_chars as f32) * 8.0 + 50.0
-                    };
-                }
+                self.show_line_numbers_scrollarea(
+                    ctx,
+                    ui,
+                    visible_log_lines,
+                    &mut scroll_area_width_max,
+                    &mut width_left_after_adding_line_numbers,
+                );
 
                 let scroll_delta_keyboard = self.get_scroll_delta_based_on_keypress(
                     ctx,
@@ -686,7 +695,7 @@ impl eframe::App for LogalyzerGUI {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_width(scroll_area_width_max)
                     .animated(false)
-                    .scroll_source(scroll_sources_allowed)
+                    .scroll_source(self.scroll_sources_allowed)
                     .auto_shrink(false)
                     .show_rows(
                         ui,
