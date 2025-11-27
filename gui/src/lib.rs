@@ -566,7 +566,7 @@ impl LogalyzerGUI {
             opened_file_max_line_chars = opened_file.content_max_line_chars;
         }
 
-        // Line numbers scroll area.
+        // Show the line numbers scroll area only if a file is opened.
         if opened_file_max_line_chars > 0 {
             egui::ScrollArea::vertical()
                 .id_salt("line_numbers")
@@ -623,6 +623,35 @@ impl LogalyzerGUI {
             } else {
                 (opened_file_max_line_chars as f32) * 8.0 + 50.0
             };
+        }
+    }
+
+    fn scroll_to_search_result(&mut self, ui: &egui::Ui, row_range: &std::ops::Range<usize>) {
+        // If the search term is found, scroll to n-th occurence depending on the self.state.search_found_showing_index.
+        if !self.state.search_found.is_empty() {
+            let last_shown_different_or_init = (self.state.search_found_last_shown_index.is_none())
+                || (self.state.search_found_last_shown_index.unwrap()
+                    != self.state.search_found_showing_index);
+            if last_shown_different_or_init {
+                let poi = &self.state.search_found[self.state.search_found_showing_index];
+                let line_of_interest = poi.line;
+
+                // If we're not already showing the line, scroll to it.
+                if row_range.start > line_of_interest - 1 || row_range.end <= line_of_interest - 1 {
+                    let line_height = self.user_settings.font.size;
+                    let current_top_line_offset = row_range.start as f32 * line_height;
+                    let line_of_interest_offset = (line_of_interest as f32 - 1.0) * line_height;
+
+                    // TODO: this delta should be adjusted to be more-or-less at the center of screen.
+                    let delta: f32 = line_of_interest_offset - current_top_line_offset;
+
+                    ui.scroll_with_delta(egui::vec2(0.0, -delta));
+                } else {
+                    // Scrolling completed.
+                    self.state.search_found_last_shown_index =
+                        Some(self.state.search_found_showing_index);
+                }
+            }
         }
     }
 }
@@ -689,8 +718,7 @@ impl eframe::App for LogalyzerGUI {
                     width_left_after_adding_line_numbers,
                 );
 
-                // Log file contents scroll area.
-                let scroll_area = egui::ScrollArea::both()
+                let log_file_contents_scroll_area_resp = egui::ScrollArea::both()
                     .id_salt("log_file")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .max_width(scroll_area_width_max)
@@ -705,39 +733,7 @@ impl eframe::App for LogalyzerGUI {
                             ui.set_min_height(ui.available_height());
                             ui.scroll_with_delta(scroll_delta_keyboard);
 
-                            // If the search term is found, scroll to n-th occurence depending on the self.state.search_found_showing_index.
-                            if !self.state.search_found.is_empty() {
-                                let last_shown_different_or_init =
-                                    (self.state.search_found_last_shown_index.is_none())
-                                        || (self.state.search_found_last_shown_index.unwrap()
-                                            != self.state.search_found_showing_index);
-                                if last_shown_different_or_init {
-                                    let poi = &self.state.search_found
-                                        [self.state.search_found_showing_index];
-                                    let line_of_interest = poi.line;
-
-                                    // If we're not already showing the line, scroll to it.
-                                    if row_range.start > line_of_interest - 1
-                                        || row_range.end <= line_of_interest - 1
-                                    {
-                                        let line_height = self.user_settings.font.size;
-                                        let current_top_line_offset =
-                                            row_range.start as f32 * line_height;
-                                        let line_of_interest_offset =
-                                            (line_of_interest as f32 - 1.0) * line_height;
-
-                                        // TODO: this delta should be adjusted to be more-or-less at the center of screen.
-                                        let delta: f32 =
-                                            line_of_interest_offset - current_top_line_offset;
-
-                                        ui.scroll_with_delta(egui::vec2(0.0, -delta));
-                                    } else {
-                                        // Scrolling completed.
-                                        self.state.search_found_last_shown_index =
-                                            Some(self.state.search_found_showing_index);
-                                    }
-                                }
-                            }
+                            self.scroll_to_search_result(ui, &row_range);
 
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {
@@ -767,8 +763,11 @@ impl eframe::App for LogalyzerGUI {
                         },
                     );
 
-                self.state.vertical_scroll_offset = scroll_area.state.offset.y;
-                self.state.log_scroll_area_width = scroll_area.content_size.x;
+                // Keep the line numbers scroll area and log file content scroll area synchronized while scrolling.
+                self.state.vertical_scroll_offset =
+                    log_file_contents_scroll_area_resp.state.offset.y;
+                self.state.log_scroll_area_width =
+                    log_file_contents_scroll_area_resp.content_size.x;
             });
         });
     }
