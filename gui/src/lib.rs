@@ -316,191 +316,166 @@ impl LogalyzerGUI {
                 });
         }
     }
-}
 
-impl Default for LogalyzerGUI {
-    fn default() -> Self {
-        Self {
-            user_settings: UserSettings::default(),
-            user_settings_cached: UserSettings::default(),
-            user_settings_staging: UserSettings::default(),
-            state: LogalyzerState::default(),
-        }
+    fn show_bottom_panel_first_row(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            let button_file = ui.button("Open File");
+            if button_file.clicked() {
+                if let Some(path) = rfd::FileDialog::new().pick_file() {
+                    println!("Selected file: {:?}", path);
+                    self.user_settings.file_path = path.to_string_lossy().to_string();
+                }
+            }
+
+            let button_remote = ui.button("Open Stream");
+            if button_remote.clicked() {
+                println!("not implemented");
+            }
+
+            let button_log_format = ui.button("Log Format");
+            if button_log_format.clicked() {
+                self.state.win_log_format_open = true;
+            }
+
+            let button_rules = ui.button("Token Rules");
+            if button_rules.clicked() {
+                self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
+            }
+
+            let file_opened = self.state.opened_file.is_some();
+
+            let button_histogram = ui.add_enabled(file_opened, egui::Button::new("Histogram"));
+            if button_histogram.clicked() {
+                println!("not implemented");
+                // TODO: implement histogram
+            }
+
+            let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
+            if button_stats.clicked() {
+                println!("not implemented");
+                // TODO: implement stats
+            }
+
+            let button_save_config = ui.button("Save config");
+            if button_save_config.clicked() {
+                let selected_save_file = rfd::FileDialog::new()
+                    .add_filter("Logalyzer Config", &["logalyzercfg"])
+                    .save_file();
+                if let Some(path) = selected_save_file {
+                    log_engine::configuration_save(&path, &self.user_settings);
+                }
+            }
+
+            let button_load_config = ui.button("Load config");
+            if button_load_config.clicked() {
+                let selected_load_file = rfd::FileDialog::new()
+                    .add_filter("Logalyzer Config", &["logalyzercfg"])
+                    .pick_file();
+
+                if let Some(path) = selected_load_file {
+                    let user_settings_res = log_engine::configuration_load(&path);
+                    if let Ok(loaded_user_settings) = user_settings_res {
+                        let orig_file_path = self.user_settings.file_path.clone();
+
+                        {
+                            self.user_settings = loaded_user_settings.clone();
+                            self.user_settings_staging = loaded_user_settings;
+                        }
+
+                        // Preserve currently opened file path.
+                        self.user_settings.file_path = orig_file_path.clone();
+                        self.user_settings_staging.file_path = orig_file_path;
+                    }
+                }
+            }
+
+            ui.add_enabled(
+                file_opened,
+                egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
+            );
+
+            ui.add_enabled(
+                file_opened,
+                egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
+            );
+
+            // TODO: implement comments system
+            // TODO: option to save comments to a file maybe?
+            // TODO: show only commented lines
+            // ui.add_enabled(
+            //     file_opened,
+            //     egui::Checkbox::new(&mut self.user_settings.commented_only, "Commented only"),
+            // );
+        });
     }
-}
 
-impl eframe::App for LogalyzerGUI {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let available_rect = ctx.available_rect();
+    fn show_bottom_panel_search_and_filter(&mut self, ui: &mut egui::Ui) {
+        let search_and_filter_label_size = Vec2::new(80.0, 20.0);
+        let search_and_filter_input_size = Vec2::new(300.0, 20.0);
 
-        let bottom_panel_height = available_rect.height() * 0.2;
-        let central_panel_height = available_rect.height() - bottom_panel_height;
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.add_sized(search_and_filter_label_size, egui::Label::new("Search:"));
+                let textedit_search = ui.add_sized(
+                    search_and_filter_input_size,
+                    egui::TextEdit::singleline(&mut self.user_settings.search_term)
+                        .id_salt("search_input"),
+                );
 
-        let _bottom_panel = egui::TopBottomPanel::bottom("controls")
-            .max_height(bottom_panel_height)
-            .resizable(false)
-            .show(ctx, |ui| {
-                self.check_keyboard_shortcuts(ui);
+                if let FocusRequests::Search = self.state.focus_request {
+                    textedit_search.request_focus();
+                    self.state.focus_request = FocusRequests::None;
+                }
 
-                ui.horizontal(|ui| {
-                    let button_file = ui.button("Open File");
-                    if button_file.clicked() {
-                        if let Some(path) = rfd::FileDialog::new().pick_file() {
-                            println!("Selected file: {:?}", path);
-                            self.user_settings.file_path = path.to_string_lossy().to_string();
+                ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
+                ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
+
+                let search_prev_button = ui.add_enabled(
+                    !self.state.search_found.is_empty(),
+                    egui::Button::new("Previous"),
+                );
+                if search_prev_button.clicked() {
+                    self.state.search_found_showing_index =
+                        if self.state.search_found_showing_index == 0 {
+                            self.state.search_found.len() - 1
+                        } else {
+                            self.state.search_found_showing_index - 1
                         }
-                    }
+                }
 
-                    let button_remote = ui.button("Open Stream");
-                    if button_remote.clicked() {
-                        println!("not implemented");
-                    }
-
-                    let button_log_format = ui.button("Log Format");
-                    if button_log_format.clicked() {
-                        self.state.win_log_format_open = true;
-                    }
-
-                    let button_rules = ui.button("Token Rules");
-                    if button_rules.clicked() {
-                        self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
-                    }
-
-                    let file_opened = self.state.opened_file.is_some();
-
-                    let button_histogram =
-                        ui.add_enabled(file_opened, egui::Button::new("Histogram"));
-                    if button_histogram.clicked() {
-                        println!("not implemented");
-                        // TODO: implement histogram
-                    }
-
-                    let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
-                    if button_stats.clicked() {
-                        println!("not implemented");
-                        // TODO: implement stats
-                    }
-
-                    let button_save_config = ui.button("Save config");
-                    if button_save_config.clicked() {
-                        let selected_save_file = rfd::FileDialog::new()
-                            .add_filter("Logalyzer Config", &["logalyzercfg"])
-                            .save_file();
-                        if let Some(path) = selected_save_file {
-                            log_engine::configuration_save(&path, &self.user_settings);
-                        }
-                    }
-
-                    let button_load_config = ui.button("Load config");
-                    if button_load_config.clicked() {
-                        let selected_load_file = rfd::FileDialog::new()
-                            .add_filter("Logalyzer Config", &["logalyzercfg"])
-                            .pick_file();
-
-                        if let Some(path) = selected_load_file {
-                            let user_settings_res = log_engine::configuration_load(&path);
-                            if let Ok(loaded_user_settings) = user_settings_res {
-                                let orig_file_path = self.user_settings.file_path.clone();
-
-                                {
-                                    self.user_settings = loaded_user_settings.clone();
-                                    self.user_settings_staging = loaded_user_settings;
-                                }
-
-                                // Preserve currently opened file path.
-                                self.user_settings.file_path = orig_file_path.clone();
-                                self.user_settings_staging.file_path = orig_file_path;
-                            }
-                        }
-                    }
-
-                    ui.add_enabled(
-                        file_opened,
-                        egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
-                    );
-
-                    ui.add_enabled(
-                        file_opened,
-                        egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
-                    );
-
-                    // TODO: implement comments system
-                    // TODO: option to save comments to a file maybe?
-                    // TODO: show only commented lines
-                    // ui.add_enabled(
-                    //     file_opened,
-                    //     egui::Checkbox::new(&mut self.user_settings.commented_only, "Commented only"),
-                    // );
-                });
-
-                self.show_log_format_window(ctx);
-
-                let search_and_filter_label_size = Vec2::new(80.0, 20.0);
-                let search_and_filter_input_size = Vec2::new(300.0, 20.0);
-
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.add_sized(search_and_filter_label_size, egui::Label::new("Search:"));
-                        let textedit_search = ui.add_sized(
-                            search_and_filter_input_size,
-                            egui::TextEdit::singleline(&mut self.user_settings.search_term)
-                                .id_salt("search_input"),
-                        );
-
-                        if let FocusRequests::Search = self.state.focus_request {
-                            textedit_search.request_focus();
-                            self.state.focus_request = FocusRequests::None;
-                        }
-
-                        ui.checkbox(&mut self.user_settings.search_match_case, "Match Case");
-                        ui.checkbox(&mut self.user_settings.search_whole_word, "Whole Word");
-
-                        let search_prev_button = ui.add_enabled(
-                            !self.state.search_found.is_empty(),
-                            egui::Button::new("Previous"),
-                        );
-                        if search_prev_button.clicked() {
-                            self.state.search_found_showing_index =
-                                if self.state.search_found_showing_index == 0 {
-                                    self.state.search_found.len() - 1
-                                } else {
-                                    self.state.search_found_showing_index - 1
-                                }
-                        }
-
-                        let search_next_button = ui.add_enabled(
-                            !self.state.search_found.is_empty(),
-                            egui::Button::new("Next"),
-                        );
-                        if search_next_button.clicked() {
-                            self.state.search_found_showing_index =
-                                (self.state.search_found_showing_index + 1)
-                                    % self.state.search_found.len();
-                        }
-                    });
-
-                    ui.horizontal(|ui| {
-                        ui.add_sized(search_and_filter_label_size, egui::Label::new("Filter:"));
-                        let textedit_filter = ui.add_sized(
-                            search_and_filter_input_size,
-                            egui::TextEdit::singleline(&mut self.user_settings.filter_term)
-                                .id_salt("filter_input"),
-                        );
-
-                        if let FocusRequests::Filter = self.state.focus_request {
-                            textedit_filter.request_focus();
-                            self.state.focus_request = FocusRequests::None;
-                        }
-
-                        ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
-                        ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
-                        ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
-                        // TODO: && and || support maybe
-                        // TODO: show lines before & after filter
-                    });
-                });
+                let search_next_button = ui.add_enabled(
+                    !self.state.search_found.is_empty(),
+                    egui::Button::new("Next"),
+                );
+                if search_next_button.clicked() {
+                    self.state.search_found_showing_index =
+                        (self.state.search_found_showing_index + 1) % self.state.search_found.len();
+                }
             });
 
+            ui.horizontal(|ui| {
+                ui.add_sized(search_and_filter_label_size, egui::Label::new("Filter:"));
+                let textedit_filter = ui.add_sized(
+                    search_and_filter_input_size,
+                    egui::TextEdit::singleline(&mut self.user_settings.filter_term)
+                        .id_salt("filter_input"),
+                );
+
+                if let FocusRequests::Filter = self.state.focus_request {
+                    textedit_filter.request_focus();
+                    self.state.focus_request = FocusRequests::None;
+                }
+
+                ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
+                ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
+                ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
+                // TODO: && and || support maybe
+                // TODO: show lines before & after filter
+            });
+        });
+    }
+
+    fn show_token_colors_panel(&mut self, ctx: &egui::Context) {
         if self.state.panel_token_colors_open {
             egui::SidePanel::new(egui::panel::Side::Right, "tokens")
                 .resizable(false)
@@ -536,6 +511,40 @@ impl eframe::App for LogalyzerGUI {
                     });
                 });
         }
+    }
+}
+
+impl Default for LogalyzerGUI {
+    fn default() -> Self {
+        Self {
+            user_settings: UserSettings::default(),
+            user_settings_cached: UserSettings::default(),
+            user_settings_staging: UserSettings::default(),
+            state: LogalyzerState::default(),
+        }
+    }
+}
+
+impl eframe::App for LogalyzerGUI {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let available_rect = ctx.available_rect();
+
+        let bottom_panel_height = available_rect.height() * 0.2;
+        let central_panel_height = available_rect.height() - bottom_panel_height;
+
+        egui::TopBottomPanel::bottom("controls")
+            .max_height(bottom_panel_height)
+            .resizable(false)
+            .show(ctx, |ui| {
+                self.check_keyboard_shortcuts(ui);
+
+                self.show_bottom_panel_first_row(ui);
+                self.show_bottom_panel_search_and_filter(ui);
+
+                self.show_log_format_window(ctx);
+            });
+
+        self.show_token_colors_panel(ctx);
 
         // TODO: log job recalc should be offloaded to a separate thread
         if self.user_settings.file_path.is_empty() == false {
