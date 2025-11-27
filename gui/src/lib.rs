@@ -341,8 +341,9 @@ impl LogalyzerGUI {
                 }
             }
 
-            let button_remote = ui.button("Open Stream");
-            if button_remote.clicked() {
+            let button_stream = ui.button("Open Stream");
+            if button_stream.clicked() {
+                // TODO: implement stream support
                 println!("not implemented");
             }
 
@@ -413,8 +414,8 @@ impl LogalyzerGUI {
                 egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
             );
 
-            // TODO: implement comments system
-            // TODO: option to save comments to a file maybe?
+            // TODO: implement comments system, maybe with option to save comments to a
+            //       file together with the file itself
             // TODO: show only commented lines
             // ui.add_enabled(
             //     file_opened,
@@ -483,8 +484,8 @@ impl LogalyzerGUI {
                 ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
                 ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
                 ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
-                // TODO: && and || support maybe
-                // TODO: show lines before & after filter
+                // TODO: extended filtering: && and || support maybe
+                // TODO: maybe option to show N lines before/after match
             });
         });
     }
