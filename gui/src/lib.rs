@@ -208,9 +208,10 @@ impl LogalyzerGUI {
     }
 
     fn show_log_format_window(&mut self, ctx: &egui::Context) {
-        if self.state.win_log_format_open {
-            egui::Window::new("Log Format")
+        egui::Window::new("Log Format")
                 .auto_sized()
+                .collapsible(false)
+                .open(&mut self.state.win_log_format_open) // this controls whether the window is open, but also shows the "X" to close the window...
                 .show(ctx, |ui| {
                     ui.vertical(|ui| {
                         ui.horizontal(|ui| {
@@ -241,6 +242,12 @@ impl LogalyzerGUI {
                                 });
                         });
 
+                        ui.add_space(10.0);
+                        ui.label("If you are defining your own regex, please make sure it has captures for each character in\nthe log line, as anything not captured will be removed.");
+                        ui.add_space(5.0);
+                        ui.label("Use transparency setting in color picker for groups you don't want to highlight.");
+                        ui.add_space(10.0);
+
                         self.user_settings_staging.log_format.pattern = match {
                             self.state.log_format_mode_selected
                         } {
@@ -265,29 +272,34 @@ impl LogalyzerGUI {
                             let compiled_regex =
                                 regex::Regex::new(&self.user_settings_staging.log_format.pattern);
                             compiled_regex_valid = compiled_regex.is_ok();
-                            if !compiled_regex_valid {
-                                ui.colored_label(egui::Color32::RED, "Regex invalid");
-                                ui.end_row();
-                            } else {
-                                ui.colored_label(egui::Color32::GREEN, "Regex valid");
-                                ui.end_row();
 
-                                let regex = compiled_regex.unwrap();
-                                let capture_group_count = regex.captures_len() - 1;
-
-                                for i in 0..capture_group_count {
-                                    ui.label(format!("Group #{} Color:", i + 1));
-
-                                    self.user_settings_staging
-                                        .log_format
-                                        .pattern_coloring
-                                        .resize(capture_group_count, egui::Color32::RED);
-
-                                    ui.color_edit_button_srgba(
-                                        &mut self.user_settings_staging.log_format.pattern_coloring
-                                            [i],
-                                    );
+                            if !self.user_settings_staging.log_format.pattern.is_empty() {
+                                if !compiled_regex_valid {
+                                    ui.colored_label(egui::Color32::RED, "Regex invalid");
                                     ui.end_row();
+                                } else {
+                                    ui.colored_label(egui::Color32::GREEN, "Regex valid");
+                                    ui.end_row();
+
+                                    let regex = compiled_regex.unwrap();
+                                    let capture_group_count = regex.captures_len() - 1;
+
+                                    for i in 0..capture_group_count {
+                                        ui.label(format!("Group #{} Color:", i + 1));
+
+                                        self.user_settings_staging
+                                            .log_format
+                                            .pattern_coloring
+                                            .resize(capture_group_count, egui::Color32::RED);
+
+                                        ui.color_edit_button_srgba(
+                                            &mut self
+                                                .user_settings_staging
+                                                .log_format
+                                                .pattern_coloring[i],
+                                        );
+                                        ui.end_row();
+                                    }
                                 }
                             }
                         });
@@ -296,9 +308,9 @@ impl LogalyzerGUI {
                             let button_ok =
                                 ui.add_enabled(compiled_regex_valid, egui::Button::new("OK"));
                             if button_ok.clicked() {
-                                self.state.win_log_format_open = false;
                                 self.user_settings.log_format =
                                     self.user_settings_staging.log_format.clone();
+                                    ui.close_kind(egui::UiKind::Window)
                             }
 
                             let button_apply =
@@ -310,12 +322,11 @@ impl LogalyzerGUI {
 
                             let button_cancel = ui.button("Cancel");
                             if button_cancel.clicked() {
-                                self.state.win_log_format_open = false;
+                                ui.close_kind(egui::UiKind::Window)
                             }
                         });
                     });
                 });
-        }
     }
 
     fn show_bottom_panel_first_row(&mut self, ui: &mut egui::Ui) {
@@ -396,7 +407,7 @@ impl LogalyzerGUI {
             );
 
             ui.add_enabled(
-                file_opened,
+                false, // This should be on only if a stream is opened.
                 egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
             );
 
@@ -621,7 +632,7 @@ impl LogalyzerGUI {
             *scroll_area_width_max = if self.user_settings.wrap_text {
                 *width_left_after_adding_line_numbers
             } else {
-                (opened_file_max_line_chars as f32) * 8.0 + 50.0
+                (opened_file_max_line_chars as f32) * 8.0 + 50.0 // good enough
             };
         }
     }
@@ -696,7 +707,7 @@ impl eframe::App for LogalyzerGUI {
 
         let visible_log_lines = self.state.line_no_jobs.len();
 
-        let _central_panel = egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_height(central_panel_height);
 
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
