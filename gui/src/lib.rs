@@ -466,6 +466,14 @@ impl LogalyzerGUI {
                     self.state.search_found_showing_index =
                         (self.state.search_found_showing_index + 1) % self.state.search_found.len();
                 }
+
+                if !self.state.search_found.is_empty() {
+                    ui.label(format!(
+                        "Result {} of {}",
+                        self.state.search_found_showing_index + 1,
+                        self.state.search_found.len()
+                    ));
+                }
             });
 
             ui.horizontal(|ui| {
