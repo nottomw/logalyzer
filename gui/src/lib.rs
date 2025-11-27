@@ -175,6 +175,31 @@ impl LogalyzerGUI {
 
         scroll_delta
     }
+
+    fn determine_wrapping(&self, ctx: &egui::Context, ui: &egui::Ui, row_index: usize) -> usize {
+        let mut line_wrapped_by = 0;
+
+        if self.user_settings.wrap_text {
+            if let Some(job) = self.state.log_jobs.get(row_index) {
+                let mut job_with_wrapping = job.clone();
+                job_with_wrapping.wrap = TextWrapping {
+                    break_anywhere: true,
+                    max_width: if self.state.log_scroll_area_width == 0.0 {
+                        ui.available_width() - 1.0
+                    } else {
+                        self.state.log_scroll_area_width
+                    },
+                    ..Default::default()
+                };
+
+                let galley = ctx.fonts_mut(|fonts| fonts.layout_job(job_with_wrapping.clone()));
+                let wrap_amount = galley.rows.len();
+                line_wrapped_by = wrap_amount - 1;
+            }
+        }
+
+        line_wrapped_by
+    }
 }
 
 impl Default for LogalyzerGUI {
@@ -569,14 +594,19 @@ impl eframe::App for LogalyzerGUI {
                     mouse_wheel: true,
                 };
 
+                let mut opened_file_max_line_chars = 0;
+                let mut line_numbers = String::new();
                 if self.state.opened_file.is_some() {
                     let opened_file = self.state.opened_file.as_ref().unwrap();
 
-                    let mut line_numbers = String::new();
                     for line_num in 1..=opened_file.content_line_count {
                         line_numbers.push_str(&format!("{}\n", line_num));
                     }
+                    opened_file_max_line_chars = opened_file.content_max_line_chars;
+                }
 
+                // Line numbers scroll area.
+                if opened_file_max_line_chars > 0 {
                     egui::ScrollArea::vertical()
                         .id_salt("line_numbers")
                         .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
@@ -592,29 +622,8 @@ impl eframe::App for LogalyzerGUI {
 
                                 ui.vertical(|ui| {
                                     for row_index in row_range {
-                                        let mut line_wrapped_by = 0;
-                                        if self.user_settings.wrap_text {
-                                            if let Some(job) = self.state.log_jobs.get(row_index) {
-                                                let mut job_with_wrapping = job.clone();
-                                                job_with_wrapping.wrap = TextWrapping {
-                                                    break_anywhere: true,
-                                                    max_width: if self.state.log_scroll_area_width
-                                                        == 0.0
-                                                    {
-                                                        ui.available_width() - 1.0
-                                                    } else {
-                                                        self.state.log_scroll_area_width
-                                                    },
-                                                    ..Default::default()
-                                                };
-
-                                                let galley = ctx.fonts_mut(|fonts| {
-                                                    fonts.layout_job(job_with_wrapping.clone())
-                                                });
-                                                let wrap_amount = galley.rows.len();
-                                                line_wrapped_by = wrap_amount - 1;
-                                            }
-                                        }
+                                        let line_wrapped_by =
+                                            self.determine_wrapping(ctx, ui, row_index);
 
                                         if let Some(job) = self
                                             .state
@@ -652,7 +661,7 @@ impl eframe::App for LogalyzerGUI {
                     scroll_area_width_max = if self.user_settings.wrap_text {
                         width_left_after_adding_line_numbers
                     } else {
-                        (opened_file.content_max_line_chars as f32) * 8.0 + 50.0
+                        (opened_file_max_line_chars as f32) * 8.0 + 50.0
                     };
                 }
 
@@ -663,6 +672,7 @@ impl eframe::App for LogalyzerGUI {
                     width_left_after_adding_line_numbers,
                 );
 
+                // Log file contents scroll area.
                 let scroll_area = egui::ScrollArea::both()
                     .id_salt("log_file")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
