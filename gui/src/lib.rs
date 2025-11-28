@@ -53,6 +53,7 @@ struct LogalyzerState {
     focus_request: FocusRequests,
     add_comment_request: Option<AddCommentRequest>,
     add_comment_window_open: bool,
+    visible_line_offsets: log_engine::VisibleLineOffsets,
 }
 
 impl Default for LogalyzerState {
@@ -73,6 +74,7 @@ impl Default for LogalyzerState {
             focus_request: FocusRequests::None,
             add_comment_request: None,
             add_comment_window_open: false,
+            visible_line_offsets: log_engine::VisibleLineOffsets::default(),
         }
     }
 }
@@ -556,7 +558,7 @@ impl LogalyzerGUI {
                 self.state.opened_file = loaded_file_meta;
 
                 if let Some(opened_file) = self.state.opened_file.as_mut() {
-                    if let Some((line_no_jobs, file_jobs, _)) =
+                    if let Some((line_no_jobs, file_jobs, _, _)) =
                         log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
@@ -570,14 +572,19 @@ impl LogalyzerGUI {
                 if self.user_settings != self.user_settings_cached {
                     self.user_settings_cached = self.user_settings.clone();
                     let opened_file = self.state.opened_file.as_ref().unwrap();
-                    if let Some((line_no_jobs, file_jobs, points_of_interest)) =
-                        log_engine::recalculate_log_job(opened_file, &self.user_settings)
+                    if let Some((
+                        line_no_jobs,
+                        file_jobs,
+                        points_of_interest,
+                        visible_line_offsets,
+                    )) = log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
                         self.state.line_no_jobs = line_no_jobs;
                         self.state.log_jobs = file_jobs;
                         self.state.search_found = points_of_interest;
                         self.state.search_found_showing_index = 0;
                         self.state.search_found_last_shown_index = None;
+                        self.state.visible_line_offsets = visible_line_offsets;
                     }
                 }
             }
@@ -647,13 +654,24 @@ impl LogalyzerGUI {
                                         .on_hover_cursor(egui::CursorIcon::PointingHand);
                                     if line_number_label.clicked() {
                                         self.state.add_comment_request = Some(AddCommentRequest {
-                                            line_no: row_index + 1,
+                                            line_no: self
+                                                .state
+                                                .visible_line_offsets
+                                                .get_offset_for_visible_line(row_index + 1)
+                                                + row_index
+                                                + 1,
                                             ..Default::default()
                                         });
                                         self.state.add_comment_window_open = true;
                                     }
 
                                     if self.user_settings.comments_visible {
+                                        let original_line_no = self
+                                            .state
+                                            .visible_line_offsets
+                                            .get_offset_for_visible_line(row_index + 1)
+                                            + row_index
+                                            + 1;
                                         let comment_for_this_line_exists =
                                             self.state.opened_file.is_some() && {
                                                 self.state
@@ -661,7 +679,7 @@ impl LogalyzerGUI {
                                                     .as_ref()
                                                     .unwrap()
                                                     .log_comments
-                                                    .contains_key(&(row_index + 1))
+                                                    .contains_key(&original_line_no)
                                             };
 
                                         if comment_for_this_line_exists {
@@ -897,8 +915,15 @@ impl eframe::App for LogalyzerGUI {
 
                                         if self.user_settings.comments_visible {
                                             if let Some(opened_file) = &self.state.opened_file {
+                                                let original_line_no = self
+                                                    .state
+                                                    .visible_line_offsets
+                                                    .get_offset_for_visible_line(row_index + 1)
+                                                    + row_index
+                                                    + 1;
+
                                                 let comment_for_this_line =
-                                                    opened_file.log_comments.get(&(row_index + 1));
+                                                    opened_file.log_comments.get(&original_line_no);
                                                 if let Some(comment_text) = comment_for_this_line {
                                                     let mut comment_job = LayoutJob::default();
                                                     comment_job.append(

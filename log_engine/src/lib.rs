@@ -40,6 +40,45 @@ impl Default for OpenedFileMetadata {
     }
 }
 
+#[derive(Default)]
+pub struct VisibleLineOffsets {
+    // (visible_line_no, offset)
+    pub offsets: Vec<(usize, usize)>, // must be sorted
+    last_offset: usize,
+}
+
+impl VisibleLineOffsets {
+    pub fn add_offset(&mut self, original_line_no: usize, visible_line_no: usize) {
+        let offset = original_line_no - visible_line_no;
+
+        if offset == self.last_offset {
+            return;
+        }
+        self.last_offset = offset;
+
+        self.offsets
+            .push((visible_line_no, original_line_no - visible_line_no));
+    }
+
+    pub fn get_offset_for_visible_line(&self, visible_line_no: usize) -> usize {
+        if self.offsets.is_empty() {
+            return 0;
+        }
+
+        // binary search, find the largest visible_line_no <= input visible_line_no
+        self.offsets
+            .binary_search_by_key(&visible_line_no, |&(vln, _)| vln)
+            .map(|index| self.offsets[index].1)
+            .unwrap_or_else(|index| {
+                if index == 0 {
+                    0
+                } else {
+                    self.offsets[index - 1].1
+                }
+            })
+    }
+}
+
 pub fn default_log_content() -> LayoutJob {
     let mut job = LayoutJob::default();
 
@@ -134,7 +173,12 @@ fn make_line_handlers(user_settings: &UserSettings) -> Vec<Box<dyn LineHandler>>
 pub fn recalculate_log_job(
     opened_file: &OpenedFileMetadata,
     user_settings: &UserSettings,
-) -> Option<(Vec<LayoutJob>, Vec<LayoutJob>, Vec<PointOfInterest>)> {
+) -> Option<(
+    Vec<LayoutJob>,
+    Vec<LayoutJob>,
+    Vec<PointOfInterest>,
+    VisibleLineOffsets,
+)> {
     let mut jobs_log: Vec<LayoutJob> = Vec::new();
     let mut jobs_line_numbers: Vec<LayoutJob> = Vec::new();
     let mut points_of_interest: Vec<PointOfInterest> = Vec::new();
@@ -148,6 +192,8 @@ pub fn recalculate_log_job(
         font_id: user_settings.font.clone(),
         ..Default::default()
     };
+
+    let mut visible_line_offsets = VisibleLineOffsets::default();
 
     for line in opened_file.content.lines() {
         lines_total_counter += 1;
@@ -203,6 +249,8 @@ pub fn recalculate_log_job(
                     0.0,
                     default_text_format.clone(),
                 );
+
+                visible_line_offsets.add_offset(lines_total_counter, lines_visible);
             } else {
                 single_line_number_job.append(
                     &format!("{}", lines_visible),
@@ -215,7 +263,12 @@ pub fn recalculate_log_job(
         }
     }
 
-    Some((jobs_line_numbers, jobs_log, points_of_interest))
+    Some((
+        jobs_line_numbers,
+        jobs_log,
+        points_of_interest,
+        visible_line_offsets,
+    ))
 }
 
 pub fn configuration_save(file_path: &std::path::Path, user_settings: &UserSettings) {
