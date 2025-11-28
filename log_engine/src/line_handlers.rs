@@ -16,7 +16,7 @@ pub enum LineHandlerType {
 pub trait LineHandler {
     fn handler_type(&self) -> LineHandlerType;
     fn is_active(&self) -> bool;
-    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>);
+    fn process_line(&mut self, line: &mut LineVec);
     fn points_of_interest(&self) -> Vec<PointOfInterest>;
 }
 
@@ -97,7 +97,7 @@ impl LineHandler for LogFormatLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut LineVec) {
         assert!(
             line.len() == 1,
             "LogFormatLineHandler expects a single full line, got {} parts",
@@ -122,7 +122,7 @@ impl LineHandler for LogFormatLineHandler {
         }
 
         // Do the actual coloring.
-        let mut line_result: Vec<(String, TextFormat)> = Vec::new();
+        let mut line_result: LineVec = Vec::new();
 
         for (i, group) in line_matched_groups.iter().enumerate() {
             // Skip first group which is always a full match.
@@ -196,8 +196,8 @@ impl LineHandler for TokenHilightLineHandler {
         return false;
     }
 
-    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
-        let mut line_result: Vec<(String, TextFormat)> = line.clone();
+    fn process_line(&mut self, line: &mut LineVec) {
+        let mut line_result = line.clone();
 
         for (token, color) in self.token_colors.iter() {
             let split_points = linevec_find(&line_result, token, true, false);
@@ -256,7 +256,7 @@ impl LineHandler for FilterLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut LineVec) {
         let split_points = linevec_find(&line, &self.filter_term, self.match_case, self.whole_word);
         let matched = !split_points.is_empty();
 
@@ -313,7 +313,7 @@ impl LineHandler for SearchLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
+    fn process_line(&mut self, line: &mut LineVec) {
         self.points_of_interest.clear(); // Clear previous points of interest.
 
         let split_points = linevec_find(&line, &self.search_term, self.match_case, self.whole_word);
