@@ -732,7 +732,7 @@ impl LogalyzerGUI {
         }
     }
 
-    fn show_comment_add_window(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn show_comment_add_window(&mut self, ctx: &egui::Context) {
         if self.state.add_comment_request.is_none() {
             return;
         }
@@ -848,7 +848,7 @@ impl eframe::App for LogalyzerGUI {
                     &mut width_left_after_adding_line_numbers,
                 );
 
-                self.show_comment_add_window(ctx, ui);
+                self.show_comment_add_window(ctx);
 
                 let scroll_delta_keyboard = self.get_scroll_delta_based_on_keypress(
                     ctx,
