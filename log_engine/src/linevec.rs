@@ -1,4 +1,4 @@
-use egui::{Color32, TextFormat};
+use egui::TextFormat;
 
 pub type LineVec = Vec<(String, TextFormat)>;
 pub type SplitPointPartial = (usize, usize); // (index in linevec, starting/ending offset in part)
@@ -102,7 +102,7 @@ pub fn linevec_split(
         new_format
     };
 
-    for split_point in split_points.into_iter() {
+    for split_point in split_points.into_iter().rev() {
         let splitpoint_start = split_point.0;
         let splitpoint_end = split_point.1;
 
@@ -151,6 +151,18 @@ pub fn linevec_split(
                 ),
             );
 
+            // If there are middle parts and they need to be colored, do it now.
+            for middle_part_index in (splitpoint_start_index + 1)..splitpoint_end_index {
+                let middle_part = &mut line[middle_part_index];
+                let original_text_middle = middle_part.0.clone();
+                let original_format_middle = middle_part.1.clone();
+
+                *middle_part = (
+                    original_text_middle,
+                    middle_text_format(&original_format_middle),
+                );
+            }
+
             // Split end part
             let part_end = &mut line[splitpoint_end_index + 1];
             let original_text_end = part_end.0.clone();
@@ -159,7 +171,7 @@ pub fn linevec_split(
             let middle_text_end = original_text_end[..splitpoint_end_offset].to_string();
             let after_text = original_text_end[splitpoint_end_offset..].to_string();
 
-            *part_end = (middle_text_end, original_format_end.clone());
+            *part_end = (middle_text_end, middle_text_format(&original_format_end));
 
             line.insert(splitpoint_end_index + 2, (after_text, original_format_end));
         }
@@ -169,6 +181,7 @@ pub fn linevec_split(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egui::Color32;
 
     #[test]
     fn basic_string_searches() {
@@ -418,7 +431,17 @@ mod tests {
                 }
             )
         );
-        assert_eq!(line[2], ("cru".to_string(), TextFormat::default()));
+        assert_eq!(
+            line[2],
+            (
+                "cru".to_string(),
+                TextFormat {
+                    background: Color32::RED,
+                    color: Color32::WHITE,
+                    ..Default::default()
+                }
+            )
+        );
         assert_eq!(line[3], ("el ".to_string(), TextFormat::default()));
         assert_eq!(line[4], ("world".to_string(), TextFormat::default()));
     }

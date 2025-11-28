@@ -20,15 +20,8 @@ pub trait LineHandler {
     fn points_of_interest(&self) -> Vec<PointOfInterest>;
 }
 
-fn color_to_text_format(color_background: egui::Color32, font: FontId) -> TextFormat {
-    let mut text_format = TextFormat::default();
-    text_format.font_id = font;
-
-    text_format.background = color_background;
-
-    // Ensure the text color is visible on the background.
-    // If it's bright, make the color black, else white.
-    text_format.color = if (color_background.r() as u32
+fn calculate_text_color_from_background_color(color_background: egui::Color32) -> egui::Color32 {
+    let color = if (color_background.r() as u32
         + color_background.g() as u32
         + color_background.b() as u32)
         / 3
@@ -39,7 +32,7 @@ fn color_to_text_format(color_background: egui::Color32, font: FontId) -> TextFo
         Color32::WHITE
     };
 
-    text_format
+    color
 }
 
 fn color_to_text_format_with_textcolor(
@@ -203,66 +196,21 @@ impl LineHandler for TokenHilightLineHandler {
         return false;
     }
 
-    // TODO: token hilighter should be unit tested
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         let mut line_result: Vec<(String, TextFormat)> = line.clone();
 
         for (token, color) in self.token_colors.iter() {
-            let mut part_no = 0;
-            for (part_str, original_text_format) in line_result.iter() {
-                // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
-                if part_str.contains(token) {
-                    let mut new_line_result: Vec<(String, TextFormat)> = line_result.clone();
-                    let mut start = 0;
-
-                    let mut part_no_offset = 0;
-
-                    while let Some(pos) = part_str[start..].find(token) {
-                        // Append the text before the token.
-                        if pos > 0 {
-                            if part_no_offset == 0 {
-                                new_line_result[part_no + part_no_offset] = (
-                                    part_str[start..start + pos].to_string(),
-                                    original_text_format.clone(),
-                                );
-                            } else {
-                                new_line_result.insert(
-                                    part_no + part_no_offset,
-                                    (
-                                        part_str[start..start + pos].to_string(),
-                                        original_text_format.clone(),
-                                    ),
-                                );
-                            }
-                            part_no_offset += 1;
-                        }
-
-                        // Append the token with the highlight color.
-                        let highlight_format =
-                            color_to_text_format(*color, original_text_format.font_id.clone());
-                        new_line_result.insert(
-                            part_no + part_no_offset,
-                            (token.to_string(), highlight_format),
-                        );
-                        part_no_offset += 1;
-
-                        start += pos + token.len();
-                    }
-
-                    // Append any remaining text after the last token.
-                    if start < part_str.len() {
-                        new_line_result.insert(
-                            part_no + part_no_offset,
-                            (part_str[start..].to_string(), original_text_format.clone()),
-                        );
-                    }
-
-                    line_result = new_line_result;
-                    break; // Move to the next token after processing this one.
-                }
-
-                part_no += 1;
+            let split_points = linevec_find(&line_result, token, true, false);
+            if split_points.is_empty() {
+                continue;
             }
+
+            linevec_split(
+                &mut line_result,
+                split_points,
+                Some(color.clone()),
+                Some(calculate_text_color_from_background_color(color.clone())),
+            );
         }
 
         *line = line_result;
@@ -309,36 +257,8 @@ impl LineHandler for FilterLineHandler {
     }
 
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
-        let mut matched = false;
-        // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
-        for (part_str, _) in line.iter() {
-            let haystack = if self.match_case {
-                part_str.to_string()
-            } else {
-                part_str.to_lowercase()
-            };
-
-            let needle = if self.match_case {
-                self.filter_term.clone()
-            } else {
-                self.filter_term.to_lowercase()
-            };
-
-            if self.whole_word {
-                let words: Vec<&str> = haystack
-                    .split(|c: char| !c.is_alphanumeric() && c != '_')
-                    .collect();
-                if words.iter().any(|&word| word == needle) {
-                    matched = true;
-                    break;
-                }
-            } else {
-                if haystack.contains(&needle) {
-                    matched = true;
-                    break;
-                }
-            }
-        }
+        let split_points = linevec_find(&line, &self.filter_term, self.match_case, self.whole_word);
+        let matched = !split_points.is_empty();
 
         if !matched {
             if self.negative {
@@ -396,98 +316,26 @@ impl LineHandler for SearchLineHandler {
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         self.points_of_interest.clear(); // Clear previous points of interest.
 
-        for i in 0..line.len() {
-            // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
-            let part_str = &line[i].0;
-            let haystack = if self.match_case {
-                part_str.to_string()
-            } else {
-                part_str.to_lowercase()
-            };
-
-            let needle = if self.match_case {
-                self.search_term.clone()
-            } else {
-                self.search_term.to_lowercase()
-            };
-
-            let mut start = 0;
-            while let Some(pos) = haystack[start..].find(&needle) {
-                // If whole_word is enabled, verify the match is a whole word.
-                if self.whole_word {
-                    let before_char = if pos + start == 0 {
-                        ' ' // Treat start of string as non-alphanumeric
-                    } else {
-                        haystack.chars().nth(pos + start - 1).unwrap()
-                    };
-                    let after_char = if pos + start + needle.len() >= haystack.len() {
-                        ' ' // Treat end of string as non-alphanumeric
-                    } else {
-                        haystack.chars().nth(pos + start + needle.len()).unwrap()
-                    };
-
-                    if before_char.is_alphanumeric() || after_char.is_alphanumeric() {
-                        start += pos + 1;
-                        continue; // Not a whole word match
-                    }
-                }
-
-                self.points_of_interest.push(PointOfInterest {
-                    line: 0, // This will be set by the caller,
-                    line_part_index: i,
-                    line_offset: pos + start,
-                    line_point_size: needle.len(),
-                });
-
-                start += pos + needle.len();
-            }
-
-            // Hilight the search terms.
-            if !self.points_of_interest.is_empty() {
-                let mut new_line_parts: Vec<(String, TextFormat)> = Vec::new();
-                let original_text_format = &line[i].1;
-
-                let mut last_index = 0;
-                for poi in self
-                    .points_of_interest
-                    .iter()
-                    .filter(|p| p.line_part_index == i)
-                {
-                    // Append text before the match.
-                    if poi.line_offset > last_index {
-                        new_line_parts.push((
-                            part_str[last_index..poi.line_offset].to_string(),
-                            original_text_format.clone(),
-                        ));
-                    }
-
-                    // Append the matched term with highlight.
-                    let mut highlight_format = original_text_format.clone();
-                    highlight_format.background = Color32::YELLOW; // Highlight color
-                    new_line_parts.push((
-                        part_str[poi.line_offset..poi.line_offset + poi.line_point_size]
-                            .to_string(),
-                        highlight_format,
-                    ));
-
-                    last_index = poi.line_offset + poi.line_point_size;
-                }
-
-                // Append any remaining text after the last match.
-                if last_index < part_str.len() {
-                    new_line_parts.push((
-                        part_str[last_index..].to_string(),
-                        original_text_format.clone(),
-                    ));
-                }
-
-                // Replace the original part with the new parts.
-                line.remove(i);
-                for (j, new_part) in new_line_parts.into_iter().enumerate() {
-                    line.insert(i + j, new_part);
-                }
-            }
+        let split_points = linevec_find(&line, &self.search_term, self.match_case, self.whole_word);
+        if split_points.is_empty() {
+            return;
         }
+
+        // Record points of interest.
+        for split_point in split_points.iter() {
+            let poi = PointOfInterest {
+                line: 0,                          // To be filled by caller.
+                split_point: split_point.clone(), // This is invalid as soon as the coloring split is done...
+            };
+            self.points_of_interest.push(poi);
+        }
+
+        linevec_split(
+            line,
+            split_points.clone(),
+            Some(Color32::YELLOW),
+            Some(Color32::BLACK),
+        );
     }
 
     fn points_of_interest(&self) -> Vec<PointOfInterest> {

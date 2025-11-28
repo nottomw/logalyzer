@@ -11,14 +11,13 @@ mod linevec;
 pub mod user_settings;
 
 use crate::line_handlers::*;
+use crate::linevec::*;
 use crate::user_settings::*;
 
 #[derive(Clone)]
 pub struct PointOfInterest {
     pub line: usize,
-    pub line_part_index: usize,
-    pub line_offset: usize,
-    pub line_point_size: usize,
+    pub split_point: SplitPoint,
 }
 
 pub struct OpenedFileMetadata {
