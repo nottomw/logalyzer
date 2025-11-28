@@ -653,6 +653,36 @@ impl LogalyzerGUI {
                                         });
                                         self.state.add_comment_window_open = true;
                                     }
+
+                                    let comment_for_this_line_exists =
+                                        self.state.opened_file.is_some() && {
+                                            self.state
+                                                .opened_file
+                                                .as_ref()
+                                                .unwrap()
+                                                .log_comments
+                                                .contains_key(&(row_index + 1))
+                                        };
+
+                                    if comment_for_this_line_exists {
+                                        // Account for comment line as well.
+                                        // TODO: take into consideration wrapping of the comment too!
+                                        let mut comment_job_dummy = LayoutJob::default();
+                                        comment_job_dummy.append(
+                                            "c",
+                                            0.0,
+                                            egui::TextFormat {
+                                                font_id: self.user_settings.font.clone(),
+                                                color: egui::Color32::LIGHT_GREEN,
+                                                italics: true,
+                                                ..Default::default()
+                                            },
+                                        );
+
+                                        ui.horizontal(|ui| {
+                                            ui.add(egui::Label::new(comment_job_dummy));
+                                        });
+                                    }
                                 }
                             }
 
@@ -711,6 +741,8 @@ impl LogalyzerGUI {
             .open(&mut self.state.add_comment_window_open)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
+                    let mut should_add_comment = false;
+
                     {
                         let comment_request = self.state.add_comment_request.as_mut().unwrap();
 
@@ -722,6 +754,11 @@ impl LogalyzerGUI {
                         // TODO: add enter support to confirm adding comment
                         let comment_text_edit =
                             ui.text_edit_singleline(&mut comment_request.comment_text);
+                        if comment_text_edit.lost_focus()
+                            && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
+                            should_add_comment = true;
+                        }
                         comment_text_edit.request_focus();
                     }
 
@@ -729,7 +766,7 @@ impl LogalyzerGUI {
                         let comment_request = self.state.add_comment_request.as_mut().unwrap();
 
                         let button_add = ui.button("OK");
-                        if button_add.clicked() {
+                        if button_add.clicked() || should_add_comment {
                             if !comment_request.comment_text.is_empty() {
                                 if let Some(opened_file) = &mut self.state.opened_file {
                                     opened_file.log_comments.insert(
@@ -858,7 +895,6 @@ impl eframe::App for LogalyzerGUI {
                                             log_line_resp.highlight();
                                         }
 
-                                        // TODO: fix line numbers for comments, check line wrapping and comment wrapping
                                         if let Some(opened_file) = &self.state.opened_file {
                                             let comment_for_this_line =
                                                 opened_file.log_comments.get(&(row_index + 1));
