@@ -210,6 +210,10 @@ pub fn recalculate_log_job(
                     break;
                 }
 
+                // TODO: there is a bug that duplicates entries here somewhere, reproduces with
+                //       setting a log format and hilighting a token that starts at the end of
+                //       the log-formatted "part".
+                //       i.e. /part/from/log/TOKEN_HILIGHT/format
                 handler.process_line(&mut line_parts);
 
                 // This should ideally be fixed, as we're uncovering here the line handler type.

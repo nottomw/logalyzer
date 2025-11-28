@@ -56,6 +56,25 @@ fn color_to_text_format_with_textcolor(
     text_format
 }
 
+// TODO: build some primitives for LineHandlers, like splitting lines into parts,
+//       hilighting some parts, searching for text in split line, ...
+// type LineVec = Vec<(String, TextFormat)>;
+// type SplitPoint = (usize, usize, usize); // (index in linevec, offset in part, splitting length)
+
+// fn lh_find(line: &LineVec, search_term: &str) -> Vec<SplitPoint> {
+//     Vec::new()
+// }
+
+// fn lh_split(line: &mut LineVec, split_point: SplitPoint) {}
+
+// fn lh_split_and_color(
+//     line: &mut LineVec,
+//     split_point: SplitPoint,
+//     color_bg: egui::Color32,
+//     color_text: egui::Color32,
+// ) {
+// }
+
 pub struct LogFormatLineHandler {
     compiled_log_format_regex: regex::Regex,
     pattern_coloring: Vec<Color32>,
@@ -104,8 +123,11 @@ impl LineHandler for LogFormatLineHandler {
     }
 
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
-        // Log format works only on full lines.
-        assert!(line.len() == 1);
+        assert!(
+            line.len() == 1,
+            "LogFormatLineHandler expects a single full line, got {} parts",
+            line.len()
+        );
 
         let line_full = &line[0].0;
         let line_original_format = &line[0].1;
@@ -206,6 +228,7 @@ impl LineHandler for TokenHilightLineHandler {
         for (token, color) in self.token_colors.iter() {
             let mut part_no = 0;
             for (part_str, original_text_format) in line_result.iter() {
+                // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
                 if part_str.contains(token) {
                     let mut new_line_result: Vec<(String, TextFormat)> = line_result.clone();
                     let mut start = 0;
@@ -305,6 +328,7 @@ impl LineHandler for FilterLineHandler {
 
     fn process_line(&mut self, line: &mut Vec<(String, TextFormat)>) {
         let mut matched = false;
+        // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
         for (part_str, _) in line.iter() {
             let haystack = if self.match_case {
                 part_str.to_string()
@@ -391,6 +415,7 @@ impl LineHandler for SearchLineHandler {
         self.points_of_interest.clear(); // Clear previous points of interest.
 
         for i in 0..line.len() {
+            // TODO: if the search term spans multiple parts, it will not be found. Should be fixed.
             let part_str = &line[i].0;
             let haystack = if self.match_case {
                 part_str.to_string()
