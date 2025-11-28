@@ -156,6 +156,11 @@ pub fn recalculate_log_job(
                 vec![(line.to_string(), default_text_format.clone())];
 
             for handler in &mut handlers {
+                if line_parts.is_empty() {
+                    // If the line was filtered out no need to continue processing.
+                    break;
+                }
+
                 handler.process_line(&mut line_parts);
 
                 // This should ideally be fixed, as we're uncovering here the line handler type.
