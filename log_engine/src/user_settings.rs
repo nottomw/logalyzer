@@ -23,6 +23,7 @@ pub struct UserSettings {
     pub log_format: LogFormat,
     pub token_colors: Vec<(String, Color32)>,
     pub font: FontId,
+    pub comments_visible: bool,
 }
 
 // Just a struct that doesnt use egui types, for ser/des; Q&D hack.
@@ -112,6 +113,7 @@ impl UserSettings {
             log_format,
             token_colors,
             font: FontId::monospace(ser_des.font_size),
+            comments_visible: true,
         })
     }
 }
@@ -132,6 +134,7 @@ impl Default for UserSettings {
             log_format: LogFormat::default(),
             token_colors: Vec::with_capacity(25),
             font: FontId::monospace(12.0),
+            comments_visible: true,
         };
 
         // Initialize the colors in token_colors to some default values.

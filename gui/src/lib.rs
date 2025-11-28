@@ -426,13 +426,10 @@ impl LogalyzerGUI {
                 egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
             );
 
-            // TODO: implement comments system, maybe with option to save comments to a
-            //       file together with the file itself
-            // TODO: show only commented lines
-            // ui.add_enabled(
-            //     file_opened,
-            //     egui::Checkbox::new(&mut self.user_settings.commented_only, "Commented only"),
-            // );
+            ui.add_enabled(
+                file_opened,
+                egui::Checkbox::new(&mut self.user_settings.comments_visible, "Comments"),
+            );
         });
     }
 
@@ -656,34 +653,36 @@ impl LogalyzerGUI {
                                         self.state.add_comment_window_open = true;
                                     }
 
-                                    let comment_for_this_line_exists =
-                                        self.state.opened_file.is_some() && {
-                                            self.state
-                                                .opened_file
-                                                .as_ref()
-                                                .unwrap()
-                                                .log_comments
-                                                .contains_key(&(row_index + 1))
-                                        };
+                                    if self.user_settings.comments_visible {
+                                        let comment_for_this_line_exists =
+                                            self.state.opened_file.is_some() && {
+                                                self.state
+                                                    .opened_file
+                                                    .as_ref()
+                                                    .unwrap()
+                                                    .log_comments
+                                                    .contains_key(&(row_index + 1))
+                                            };
 
-                                    if comment_for_this_line_exists {
-                                        // Account for comment line as well.
-                                        // TODO: take into consideration wrapping of the comment too!
-                                        let mut comment_job_dummy = LayoutJob::default();
-                                        comment_job_dummy.append(
-                                            "c",
-                                            0.0,
-                                            egui::TextFormat {
-                                                font_id: self.user_settings.font.clone(),
-                                                color: egui::Color32::LIGHT_GREEN,
-                                                italics: true,
-                                                ..Default::default()
-                                            },
-                                        );
+                                        if comment_for_this_line_exists {
+                                            // Account for comment line as well.
+                                            // TODO: take into consideration wrapping of the comment too!
+                                            let mut comment_job_dummy = LayoutJob::default();
+                                            comment_job_dummy.append(
+                                                "c",
+                                                0.0,
+                                                egui::TextFormat {
+                                                    font_id: self.user_settings.font.clone(),
+                                                    color: egui::Color32::LIGHT_GREEN,
+                                                    italics: true,
+                                                    ..Default::default()
+                                                },
+                                            );
 
-                                        ui.horizontal(|ui| {
-                                            ui.add(egui::Label::new(comment_job_dummy));
-                                        });
+                                            ui.horizontal(|ui| {
+                                                ui.add(egui::Label::new(comment_job_dummy));
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -897,24 +896,29 @@ impl eframe::App for LogalyzerGUI {
                                             log_line_resp.highlight();
                                         }
 
-                                        if let Some(opened_file) = &self.state.opened_file {
-                                            let comment_for_this_line =
-                                                opened_file.log_comments.get(&(row_index + 1));
-                                            if let Some(comment_text) = comment_for_this_line {
-                                                let mut comment_job = LayoutJob::default();
-                                                comment_job.append(
-                                                    format!("\t// {}", comment_text).as_str(),
-                                                    0.0,
-                                                    egui::TextFormat {
-                                                        font_id: self.user_settings.font.clone(),
-                                                        color: egui::Color32::LIGHT_GREEN,
-                                                        italics: true,
-                                                        ..Default::default()
-                                                    },
-                                                );
-                                                ui.horizontal(|ui| {
-                                                    ui.add(egui::Label::new(comment_job));
-                                                });
+                                        if self.user_settings.comments_visible {
+                                            if let Some(opened_file) = &self.state.opened_file {
+                                                let comment_for_this_line =
+                                                    opened_file.log_comments.get(&(row_index + 1));
+                                                if let Some(comment_text) = comment_for_this_line {
+                                                    let mut comment_job = LayoutJob::default();
+                                                    comment_job.append(
+                                                        format!("\t// {}", comment_text).as_str(),
+                                                        0.0,
+                                                        egui::TextFormat {
+                                                            font_id: self
+                                                                .user_settings
+                                                                .font
+                                                                .clone(),
+                                                            color: egui::Color32::LIGHT_GREEN,
+                                                            italics: true,
+                                                            ..Default::default()
+                                                        },
+                                                    );
+                                                    ui.horizontal(|ui| {
+                                                        ui.add(egui::Label::new(comment_job));
+                                                    });
+                                                }
                                             }
                                         }
                                     }
