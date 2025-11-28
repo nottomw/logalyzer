@@ -271,9 +271,7 @@ impl LogalyzerGUI {
                             _ => r"".to_string(), // impossible
                         };
 
-                        let mut compiled_regex_valid = false;
-
-                        egui::Grid::new("log_format_grid").show(ui, |ui| {
+                        ui.horizontal(|ui| {
                             ui.label("Log Format Regex:");
                             ui.add_sized(
                                 [400.0, 20.0],
@@ -281,30 +279,44 @@ impl LogalyzerGUI {
                                     &mut self.user_settings_staging.log_format.pattern,
                                 ),
                             );
-                            ui.end_row();
+                        });
 
-                            let compiled_regex =
-                                regex::Regex::new(&self.user_settings_staging.log_format.pattern);
-                            compiled_regex_valid = compiled_regex.is_ok();
+                        let compiled_regex =
+                            regex::Regex::new(&self.user_settings_staging.log_format.pattern);
+                        let compiled_regex_valid = compiled_regex.is_ok();
 
+                        if !self.user_settings_staging.log_format.pattern.is_empty() {
+                            if !compiled_regex_valid {
+                                ui.colored_label(egui::Color32::RED, "Regex invalid!");
+                            } else {
+                                ui.colored_label(egui::Color32::GREEN, "Regex valid.");
+                            }
+                        }
+
+                        egui::Grid::new("log_format_grid").show(ui, |ui| {
                             if !self.user_settings_staging.log_format.pattern.is_empty() {
-                                if !compiled_regex_valid {
-                                    ui.colored_label(egui::Color32::RED, "Regex invalid");
-                                    ui.end_row();
-                                } else {
-                                    ui.colored_label(egui::Color32::GREEN, "Regex valid");
-                                    ui.end_row();
-
+                                if compiled_regex_valid {
                                     let regex = compiled_regex.unwrap();
                                     let capture_group_count = regex.captures_len() - 1;
 
-                                    for i in 0..capture_group_count {
-                                        ui.label(format!("Group #{} Color:", i + 1));
-
-                                        self.user_settings_staging
+                                    self.user_settings_staging
                                             .log_format
                                             .pattern_coloring
                                             .resize(capture_group_count, egui::Color32::RED);
+
+                                    self.user_settings_staging
+                                        .log_format
+                                        .pattern_coloring_text
+                                        .resize(capture_group_count, egui::Color32::GRAY);
+
+                                    self.user_settings_staging
+                                        .log_format
+                                        .pattern_coloring_text_use_original
+                                        .resize(capture_group_count, true);
+
+                                    for i in 0..capture_group_count {
+                                        ui.label(format!("Group #{}:", i + 1));
+                                        ui.label(format!("Background Color:"));
 
                                         ui.color_edit_button_srgba(
                                             &mut self
@@ -313,7 +325,22 @@ impl LogalyzerGUI {
                                                 .pattern_coloring[i],
                                         );
 
-                                        // TODO: add here also text color, make the bg transparent by default
+                                        ui.label("Text Color:");
+
+                                        ui.color_edit_button_srgba(
+                                            &mut self
+                                                .user_settings_staging
+                                                .log_format
+                                                .pattern_coloring_text[i],
+                                        );
+
+                                        ui.checkbox(
+                                            &mut self.user_settings_staging
+                                                .log_format
+                                                .pattern_coloring_text_use_original[i],
+                                            "Use original text color",
+                                        );
+
                                         ui.end_row();
                                     }
                                 }

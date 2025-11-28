@@ -19,20 +19,39 @@ pub trait LineHandler {
     fn points_of_interest(&self) -> Vec<PointOfInterest>;
 }
 
-fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
+fn color_to_text_format(color_background: egui::Color32, font: FontId) -> TextFormat {
     let mut text_format = TextFormat::default();
     text_format.font_id = font;
 
-    text_format.background = color_name;
+    text_format.background = color_background;
 
     // Ensure the text color is visible on the background.
     // If it's bright, make the color black, else white.
-    text_format.color =
-        if (color_name.r() as u32 + color_name.g() as u32 + color_name.b() as u32) / 3 > 128 {
-            Color32::BLACK
-        } else {
-            Color32::WHITE
-        };
+    text_format.color = if (color_background.r() as u32
+        + color_background.g() as u32
+        + color_background.b() as u32)
+        / 3
+        > 128
+    {
+        Color32::BLACK
+    } else {
+        Color32::WHITE
+    };
+
+    text_format
+}
+
+fn color_to_text_format_with_textcolor(
+    color_background: egui::Color32,
+    color_text: egui::Color32,
+    font: FontId,
+) -> TextFormat {
+    let mut text_format = TextFormat {
+        font_id: font,
+        background: color_background,
+        color: color_text,
+        ..Default::default()
+    };
 
     text_format
 }
@@ -40,6 +59,8 @@ fn color_to_text_format(color_name: egui::Color32, font: FontId) -> TextFormat {
 pub struct LogFormatLineHandler {
     compiled_log_format_regex: regex::Regex,
     pattern_coloring: Vec<Color32>,
+    pattern_coloring_text: Vec<Color32>,
+    pattern_coloring_text_use_original: Vec<bool>,
     default_font: FontId,
 }
 
@@ -60,6 +81,11 @@ impl LogFormatLineHandler {
             compiled_log_format_regex: compiled_regex.unwrap(),
             pattern_coloring: user_settings.log_format.pattern_coloring.clone(),
             default_font: user_settings.font.clone(),
+            pattern_coloring_text: user_settings.log_format.pattern_coloring_text.clone(),
+            pattern_coloring_text_use_original: user_settings
+                .log_format
+                .pattern_coloring_text_use_original
+                .clone(),
         })
     }
 }
@@ -108,12 +134,21 @@ impl LineHandler for LogFormatLineHandler {
             }
 
             let group_str = group.unwrap().as_str();
-            let group_str_coloring = self.pattern_coloring[i - 1];
-            let mut text_format =
-                color_to_text_format(group_str_coloring, self.default_font.clone());
-            // TODO: maybe log formater should color the text and not the background
 
-            text_format.color = line_original_format.color; // Preserve original text color.
+            let group_bg_color = self.pattern_coloring[i - 1];
+            let group_text_color = self.pattern_coloring_text[i - 1];
+            let group_text_color_use_original = self.pattern_coloring_text_use_original[i - 1];
+
+            let mut text_format = color_to_text_format_with_textcolor(
+                group_bg_color,
+                group_text_color,
+                self.default_font.clone(),
+            );
+
+            if group_text_color_use_original {
+                // Preserve original text color.
+                text_format.color = line_original_format.color;
+            }
 
             line_result.push((group_str.to_string(), text_format));
         }

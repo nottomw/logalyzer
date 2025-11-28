@@ -6,6 +6,8 @@ use std::error::Error;
 pub struct LogFormat {
     pub pattern: String, // matching regex (i.e. "^\[[0-9]*\.[0.9]*\] .*$")
     pub pattern_coloring: Vec<egui::Color32>,
+    pub pattern_coloring_text: Vec<egui::Color32>,
+    pub pattern_coloring_text_use_original: Vec<bool>,
 }
 
 #[derive(PartialEq, Clone)]
@@ -40,7 +42,9 @@ struct UserSettingsSerDes {
     pub filter_negative: bool,
     pub log_format_pattern: String,
     pub log_format_pattern_coloring: Vec<(u8, u8, u8, u8)>, // RGBA
-    pub token_colors: Vec<(String, (u8, u8, u8, u8))>,      // token_name, RGBA
+    pub log_format_pattern_coloring_text: Vec<(u8, u8, u8, u8)>, // RGBA
+    pub log_format_pattern_coloring_text_use_original: Vec<bool>,
+    pub token_colors: Vec<(String, (u8, u8, u8, u8))>, // token_name, RGBA
     pub font_size: f32,
 }
 
@@ -63,6 +67,16 @@ impl UserSettings {
                 .iter()
                 .map(|c| (c.r(), c.g(), c.b(), c.a()))
                 .collect(),
+            log_format_pattern_coloring_text: self
+                .log_format
+                .pattern_coloring_text
+                .iter()
+                .map(|c| (c.r(), c.g(), c.b(), c.a()))
+                .collect(),
+            log_format_pattern_coloring_text_use_original: self
+                .log_format
+                .pattern_coloring_text_use_original
+                .clone(),
             token_colors: self
                 .token_colors
                 .iter()
@@ -86,6 +100,13 @@ impl UserSettings {
                 .iter()
                 .map(|(r, g, b, a)| Color32::from_rgba_unmultiplied(*r, *g, *b, *a))
                 .collect(),
+            pattern_coloring_text: ser_des
+                .log_format_pattern_coloring_text
+                .iter()
+                .map(|(r, g, b, a)| Color32::from_rgba_unmultiplied(*r, *g, *b, *a))
+                .collect(),
+            pattern_coloring_text_use_original: ser_des
+                .log_format_pattern_coloring_text_use_original,
         };
 
         let token_colors = ser_des
