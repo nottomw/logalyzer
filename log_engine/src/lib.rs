@@ -82,16 +82,22 @@ impl VisibleLineOffsets {
 pub fn default_log_content() -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    let welcome_message = "Welcome to Logalyzer.\n\n\
-    Please select a log file or a stream to open.\n\
+    let welcome_message = format!(
+        "Welcome to Logalyzer ({}).\n\n\
+    Please select a log file to open.\n\
     Please use the settings panel to configure log formatting and highlighting options.\n\n\
-    You can use WASD to navigate quickly through the log file.\n\
-    Ctrl + F: focus on search input\n\
-    Ctrl + I: focus on filter input\n\
-    Ctrl + T: toggle token colors panel\n";
+    Click on a line number to add comments to log lines.\n\
+    The comments can be deleted by clicking on the \"c\" next to the comment.\n\n\
+    You can use WASD to navigate through the log file.\n\n\
+    Keyboard shortcuts:\n\
+    Ctrl + F: search\n\
+    Ctrl + I: filter\n\
+    Ctrl + T: toggle token colors panel\n",
+        env!("CARGO_PKG_VERSION")
+    );
 
     job.append(
-        welcome_message,
+        welcome_message.as_str(),
         0.0,
         TextFormat {
             font_id: FontId::monospace(12.0),

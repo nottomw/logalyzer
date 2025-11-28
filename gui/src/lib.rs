@@ -382,6 +382,8 @@ impl LogalyzerGUI {
                 }
             }
 
+            // TODO: append file / prepend file options?
+
             // Maybe later ;)
             // let button_stream = ui.button("Open Stream");
             // if button_stream.clicked() {
