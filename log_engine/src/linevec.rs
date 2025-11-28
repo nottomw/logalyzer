@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn basic_string_searches() {
-        let mut line: LineVec = vec![("Hello world".to_string(), TextFormat::default())];
+        let line: LineVec = vec![("Hello world".to_string(), TextFormat::default())];
 
         let mut split_points = linevec_find(&line, "lo wo", true, false);
         assert_eq!(split_points.len(), 1);
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn multi_part_string_searches_simple() {
-        let mut line: LineVec = vec![
+        let line: LineVec = vec![
             ("Hello ".to_string(), TextFormat::default()),
             ("cruel".to_string(), TextFormat::default()),
             ("world".to_string(), TextFormat::default()),
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn multi_part_string_searches_across_parts() {
-        let mut line: LineVec = vec![
+        let line: LineVec = vec![
             ("Hello ".to_string(), TextFormat::default()),
             ("cruel ".to_string(), TextFormat::default()),
             ("world".to_string(), TextFormat::default()),
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn multi_part_string_searches_multiple_occurrences() {
-        let mut line: LineVec = vec![
+        let line: LineVec = vec![
             ("Hello ".to_string(), TextFormat::default()),
             ("cruel ".to_string(), TextFormat::default()),
             ("world".to_string(), TextFormat::default()),
@@ -272,14 +272,14 @@ mod tests {
 
     #[test]
     fn multi_part_string_searches_across_parts_multiple_occurrences() {
-        let mut line: LineVec = vec![
+        let line: LineVec = vec![
             ("ab".to_string(), TextFormat::default()),
             ("cd".to_string(), TextFormat::default()),
             ("ab".to_string(), TextFormat::default()),
             ("cd".to_string(), TextFormat::default()),
         ];
 
-        let mut split_points = linevec_find(&line, "bc", true, false);
+        let split_points = linevec_find(&line, "bc", true, false);
         assert_eq!(split_points.len(), 2);
         assert_eq!(split_points[0], ((0, 1), (1, 1)));
         assert_eq!(split_points[1], ((2, 1), (3, 1)));
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn case_insensitive_searches() {
-        let mut line: LineVec = vec![("Hello World".to_string(), TextFormat::default())];
+        let line: LineVec = vec![("Hello World".to_string(), TextFormat::default())];
 
         let mut split_points = linevec_find(&line, "hello", false, false);
         assert_eq!(split_points.len(), 1);
@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn whole_word_searches() {
-        let mut line: LineVec = vec![(
+        let line: LineVec = vec![(
             "Hello world, hello universe".to_string(),
             TextFormat::default(),
         )];
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn whole_word_searches_across_parts() {
-        let mut line: LineVec = vec![
+        let line: LineVec = vec![
             ("lorem ip".to_string(), TextFormat::default()),
             ("sum, consecteur ".to_string(), TextFormat::default()),
             ("adipiscit el".to_string(), TextFormat::default()),
