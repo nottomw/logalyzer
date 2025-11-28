@@ -31,6 +31,12 @@ enum FocusRequests {
     Filter,
 }
 
+#[derive(Default)]
+struct AddCommentRequest {
+    line_no: usize,
+    comment_text: String,
+}
+
 struct LogalyzerState {
     vertical_scroll_offset: f32,
     opened_file: Option<OpenedFileMetadata>,
@@ -45,6 +51,8 @@ struct LogalyzerState {
     lines_wrapped: usize,
     log_scroll_area_width: f32,
     focus_request: FocusRequests,
+    add_comment_request: Option<AddCommentRequest>,
+    add_comment_window_open: bool,
 }
 
 impl Default for LogalyzerState {
@@ -63,6 +71,8 @@ impl Default for LogalyzerState {
             lines_wrapped: 0,
             log_scroll_area_width: 0.0,
             focus_request: FocusRequests::None,
+            add_comment_request: None,
+            add_comment_window_open: false,
         }
     }
 }
@@ -546,7 +556,7 @@ impl LogalyzerGUI {
                 let loaded_file_meta = log_engine::load_file(&self.user_settings);
                 self.state.opened_file = loaded_file_meta;
 
-                if let Some(opened_file) = self.state.opened_file.as_ref() {
+                if let Some(opened_file) = self.state.opened_file.as_mut() {
                     if let Some((line_no_jobs, file_jobs, _)) =
                         log_engine::recalculate_log_job(opened_file, &self.user_settings)
                     {
@@ -629,7 +639,20 @@ impl LogalyzerGUI {
                                         );
                                     }
 
-                                    ui.label(job_cloned);
+                                    let line_number_label = ui
+                                        .add(
+                                            egui::Label::new(job_cloned)
+                                                .sense(egui::Sense::click()),
+                                        )
+                                        .on_hover_text("Click to add a comment")
+                                        .on_hover_cursor(egui::CursorIcon::PointingHand);
+                                    if line_number_label.clicked() {
+                                        self.state.add_comment_request = Some(AddCommentRequest {
+                                            line_no: row_index + 1,
+                                            ..Default::default()
+                                        });
+                                        self.state.add_comment_window_open = true;
+                                    }
                                 }
                             }
 
@@ -675,6 +698,59 @@ impl LogalyzerGUI {
                 }
             }
         }
+    }
+
+    fn show_comment_add_window(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.state.add_comment_request.is_none() {
+            return;
+        }
+
+        egui::Window::new("Add Comment")
+            .auto_sized()
+            .collapsible(false)
+            .open(&mut self.state.add_comment_window_open)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    {
+                        let comment_request = self.state.add_comment_request.as_mut().unwrap();
+
+                        ui.label(format!(
+                            "Adding comment to line #{}",
+                            comment_request.line_no
+                        ));
+
+                        // TODO: add enter support to confirm adding comment
+                        let comment_text_edit =
+                            ui.text_edit_singleline(&mut comment_request.comment_text);
+                        comment_text_edit.request_focus();
+                    }
+
+                    ui.horizontal(|ui| {
+                        let comment_request = self.state.add_comment_request.as_mut().unwrap();
+
+                        let button_add = ui.button("OK");
+                        if button_add.clicked() {
+                            if !comment_request.comment_text.is_empty() {
+                                if let Some(opened_file) = &mut self.state.opened_file {
+                                    opened_file.log_comments.insert(
+                                        comment_request.line_no,
+                                        comment_request.comment_text.clone(),
+                                    );
+                                }
+
+                                self.state.add_comment_request = None;
+                                ui.close_kind(egui::UiKind::Window);
+                            }
+                        }
+
+                        let button_cancel = ui.button("Cancel");
+                        if button_cancel.clicked() {
+                            self.state.add_comment_request = None;
+                            ui.close_kind(egui::UiKind::Window);
+                        }
+                    });
+                });
+            });
     }
 }
 
@@ -733,6 +809,8 @@ impl eframe::App for LogalyzerGUI {
                     &mut width_left_after_adding_line_numbers,
                 );
 
+                self.show_comment_add_window(ctx, ui);
+
                 let scroll_delta_keyboard = self.get_scroll_delta_based_on_keypress(
                     ctx,
                     ui,
@@ -778,6 +856,28 @@ impl eframe::App for LogalyzerGUI {
 
                                         if log_line_resp.hovered() {
                                             log_line_resp.highlight();
+                                        }
+
+                                        // TODO: fix line numbers for comments, check line wrapping and comment wrapping
+                                        if let Some(opened_file) = &self.state.opened_file {
+                                            let comment_for_this_line =
+                                                opened_file.log_comments.get(&(row_index + 1));
+                                            if let Some(comment_text) = comment_for_this_line {
+                                                let mut comment_job = LayoutJob::default();
+                                                comment_job.append(
+                                                    format!("\t// {}", comment_text).as_str(),
+                                                    0.0,
+                                                    egui::TextFormat {
+                                                        font_id: self.user_settings.font.clone(),
+                                                        color: egui::Color32::LIGHT_GREEN,
+                                                        italics: true,
+                                                        ..Default::default()
+                                                    },
+                                                );
+                                                ui.horizontal(|ui| {
+                                                    ui.add(egui::Label::new(comment_job));
+                                                });
+                                            }
                                         }
                                     }
                                 }

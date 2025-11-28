@@ -3,6 +3,7 @@ use egui::{
     text::{LayoutJob, TextFormat},
 };
 
+use std::collections::HashMap;
 use std::error::Error;
 
 pub mod line_handlers;
@@ -24,6 +25,7 @@ pub struct OpenedFileMetadata {
     pub content: String,
     pub content_max_line_chars: usize,
     pub content_line_count: usize,
+    pub log_comments: HashMap<usize, String>,
 }
 
 impl Default for OpenedFileMetadata {
@@ -33,6 +35,7 @@ impl Default for OpenedFileMetadata {
             content: String::new(),
             content_max_line_chars: 0,
             content_line_count: 0,
+            log_comments: HashMap::new(),
         }
     }
 }
