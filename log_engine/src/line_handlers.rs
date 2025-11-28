@@ -58,8 +58,10 @@ fn color_to_text_format_with_textcolor(
 
 // TODO: build some primitives for LineHandlers, like splitting lines into parts,
 //       hilighting some parts, searching for text in split line, ...
+
 // type LineVec = Vec<(String, TextFormat)>;
-// type SplitPoint = (usize, usize, usize); // (index in linevec, offset in part, splitting length)
+// type SplitPointPartial = (usize, usize); // (index in linevec, starting/ending offset in part)
+// type SplitPoint = (SplitPointPartial, SplitPointPartial); // (start split, end split)
 
 // fn lh_find(line: &LineVec, search_term: &str) -> Vec<SplitPoint> {
 //     Vec::new()
@@ -71,7 +73,7 @@ fn color_to_text_format_with_textcolor(
 //     line: &mut LineVec,
 //     split_point: SplitPoint,
 //     color_bg: egui::Color32,
-//     color_text: egui::Color32,
+//     color_text: Option<egui::Color32>,
 // ) {
 // }
 
