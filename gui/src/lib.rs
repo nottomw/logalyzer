@@ -382,11 +382,11 @@ impl LogalyzerGUI {
                 }
             }
 
-            let button_stream = ui.button("Open Stream");
-            if button_stream.clicked() {
-                // TODO: implement stream support
-                println!("not implemented");
-            }
+            // Maybe later ;)
+            // let button_stream = ui.button("Open Stream");
+            // if button_stream.clicked() {
+            //     println!("not implemented");
+            // }
 
             let button_log_format = ui.button("Log Format");
             if button_log_format.clicked() {
@@ -450,10 +450,11 @@ impl LogalyzerGUI {
                 egui::Checkbox::new(&mut self.user_settings.wrap_text, "Wrap"),
             );
 
-            ui.add_enabled(
-                false, // This should be on only if a stream is opened.
-                egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
-            );
+            // Maybe later ;)
+            // ui.add_enabled(
+            //     false, // This should be on only if a stream is opened.
+            //     egui::Checkbox::new(&mut self.user_settings.autoscroll, "Autoscroll"),
+            // );
 
             ui.add_enabled(
                 file_opened,
