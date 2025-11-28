@@ -310,6 +310,8 @@ impl LogalyzerGUI {
                                                 .log_format
                                                 .pattern_coloring[i],
                                         );
+
+                                        // TODO: add here also text color, make the bg transparent by default
                                         ui.end_row();
                                     }
                                 }
