@@ -46,7 +46,7 @@ fn color_to_text_format_with_textcolor(
     color_text: egui::Color32,
     font: FontId,
 ) -> TextFormat {
-    let mut text_format = TextFormat {
+    let text_format = TextFormat {
         font_id: font,
         background: color_background,
         color: color_text,
