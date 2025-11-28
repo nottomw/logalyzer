@@ -698,7 +698,22 @@ impl LogalyzerGUI {
                                             );
 
                                             ui.horizontal(|ui| {
-                                                ui.add(egui::Label::new(comment_job_dummy));
+                                                let comment_label = ui
+                                                    .add(
+                                                        egui::Label::new(comment_job_dummy)
+                                                            .sense(egui::Sense::click()),
+                                                    )
+                                                    .on_hover_text("Click to delete the comment")
+                                                    .on_hover_cursor(egui::CursorIcon::Crosshair);
+                                                if comment_label.clicked() {
+                                                    if let Some(opened_file) =
+                                                        &mut self.state.opened_file
+                                                    {
+                                                        opened_file
+                                                            .log_comments
+                                                            .remove(&original_line_no);
+                                                    }
+                                                }
                                             });
                                         }
                                     }
