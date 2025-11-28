@@ -752,7 +752,6 @@ impl LogalyzerGUI {
                             comment_request.line_no
                         ));
 
-                        // TODO: add enter support to confirm adding comment
                         let comment_text_edit =
                             ui.text_edit_singleline(&mut comment_request.comment_text);
                         if comment_text_edit.lost_focus()
