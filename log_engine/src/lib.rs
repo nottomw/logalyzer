@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::error::Error;
 
 pub mod line_handlers;
+mod linevec;
 pub mod user_settings;
 
 use crate::line_handlers::*;
