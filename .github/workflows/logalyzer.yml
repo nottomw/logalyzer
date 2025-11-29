@@ -1,4 +1,4 @@
-name: logalyzer
+name: build
 
 on:
   push:
