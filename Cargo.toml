@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 gui = { path = "./gui" }
+
+[workspace]
+members = [ "gui", "log_engine" ]
