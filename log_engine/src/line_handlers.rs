@@ -394,3 +394,302 @@ impl LineHandler for SearchLineHandler {
         self.points_of_interest.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn filter_linehandler_make(
+        filter_term: &str,
+        match_case: bool,
+        whole_word: bool,
+        negative: bool,
+        extended: bool,
+    ) -> FilterLineHandler {
+        FilterLineHandler {
+            filter_term: filter_term.to_string(),
+            match_case,
+            whole_word,
+            negative,
+            extended,
+        }
+    }
+
+    #[test]
+    fn filter_empty_term_inactive() {
+        let uut = filter_linehandler_make("", false, false, false, false);
+        assert!(!uut.is_active());
+    }
+
+    #[test]
+    fn filter_empty_line() {
+        let mut uut = filter_linehandler_make("error", false, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 0);
+    }
+
+    #[test]
+    fn filter_basic() {
+        let mut uut = filter_linehandler_make("error", false, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is a normal line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_multiword() {
+        let mut uut = filter_linehandler_make("error line", false, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec = vec![(
+            "This is an error message".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_with_match_case() {
+        let mut uut = filter_linehandler_make("Error", true, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an Error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an Error line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_with_whole_word() {
+        let mut uut = filter_linehandler_make("error", false, true, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec = vec![(
+            "This is an erroring line".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_negative() {
+        let mut uut = filter_linehandler_make("error", false, false, true, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is a normal line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is a normal line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_negative_with_whole_word() {
+        let mut uut = filter_linehandler_make("error", false, true, true, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![(
+            "This is an erroring line".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an erroring line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_negative_with_match_case() {
+        let mut uut = filter_linehandler_make("Error", true, false, true, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an Error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_extended_and() {
+        let mut uut = filter_linehandler_make("error && line", false, false, false, true);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec = vec![(
+            "This is an error message".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_extended_or() {
+        let mut uut = filter_linehandler_make("error || warning", false, false, false, true);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_warning: LineVec =
+            vec![("This is a warning line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_warning);
+        assert_eq!(line_warning.len(), 1);
+        assert_eq!(line_warning[0].0, "This is a warning line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is a normal line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_extended_and_with_negative() {
+        let mut uut = filter_linehandler_make("error && line", false, false, true, true);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![(
+            "This is an error message".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error message");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_extended_or_with_negative() {
+        let mut uut = filter_linehandler_make("error || warning", false, false, true, true);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is a normal line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is a normal line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+
+        let mut line_no_match_warning: LineVec =
+            vec![("This is a warning line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match_warning);
+        assert_eq!(line_no_match_warning.len(), 0);
+    }
+
+    #[test]
+    fn filter_extended_single_term() {
+        let mut uut = filter_linehandler_make("error", false, false, false, true);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error line");
+
+        let mut line_no_match: LineVec =
+            vec![("This is a normal line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+
+    #[test]
+    fn filter_not_extended_with_and_in_search_term() {
+        let mut uut = filter_linehandler_make("error && warning", false, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![(
+            "This is an error warning".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 0);
+
+        let mut line_no_match: LineVec =
+            vec![("This is an error line".to_string(), TextFormat::default())];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+
+        let mut line = vec![(
+            "This is a error && warning line".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is a error && warning line");
+    }
+
+    #[test]
+    fn filter_not_extended_with_or_in_search_term() {
+        let mut uut = filter_linehandler_make("error || warning", false, false, false, false);
+        assert!(uut.is_active());
+
+        let mut line: LineVec = vec![(
+            "This is an error || warning".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line);
+        assert_eq!(line.len(), 1);
+        assert_eq!(line[0].0, "This is an error || warning");
+
+        let mut line_no_match: LineVec = vec![(
+            "This is a normal error or warning line".to_string(),
+            TextFormat::default(),
+        )];
+        uut.process_line(&mut line_no_match);
+        assert_eq!(line_no_match.len(), 0);
+    }
+}
