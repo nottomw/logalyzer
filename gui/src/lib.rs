@@ -719,17 +719,28 @@ impl LogalyzerGUI {
                         .show(ui, |ui| {
                             let mut range_index = 0;
 
-                            ui.label("Range");
-                            ui.label("Count");
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                ui.label("Range");
+                            });
+
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                ui.label("Count");
+                            });
+
                             ui.label("");
                             ui.end_row();
 
                             if histogram_matches.len() != 0 {
                                 for (hist_start, hist_end, hist_count) in histogram_matches.iter() {
-                                    ui.label(format!("{} - {}", hist_start, hist_end));
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::RIGHT),
+                                        |ui| {
+                                            ui.label(format!("{} - {}", hist_start, hist_end));
+                                        },
+                                    );
 
                                     ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        egui::Layout::right_to_left(egui::Align::RIGHT),
                                         |ui| {
                                             ui.label(format!("{}", hist_count));
                                         },
@@ -768,9 +779,15 @@ impl LogalyzerGUI {
                             } else {
                                 for _ in 0..number_of_bars {
                                     // Draw the table anyway with empty fields.
-                                    ui.label("-");
                                     ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        egui::Layout::right_to_left(egui::Align::RIGHT),
+                                        |ui| {
+                                            ui.label("n/a");
+                                        },
+                                    );
+
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::RIGHT),
                                         |ui| {
                                             ui.label("0");
                                         },
