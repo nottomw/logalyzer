@@ -17,7 +17,7 @@ cargo build --release
 ```
 
 ## Usage
-Run the application as every other application.
+Run as any other application.
 
 There are command line options available, run with `--help` to see them all:
 ```bash
