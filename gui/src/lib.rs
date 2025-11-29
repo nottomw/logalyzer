@@ -93,6 +93,7 @@ impl LogalyzerGUI {
     fn new(args: Vec<String>) -> Self {
         let mut new_self = Self::default();
 
+        // TODO: use a proper arg parser
         // For now processing cmdline args manually here as the params are super simple.
         for arg in args.iter().skip(1) {
             match arg.as_str() {
