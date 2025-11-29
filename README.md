@@ -9,6 +9,7 @@ Logalyzer is a simple tool to help with reading and analyzing log files.
 - Searching and filtering
 - Custom token highlighting
 - Histogram visualization of terms in logs
+- Commenting on log lines
 
 ## Usage
 Run as any other application.
