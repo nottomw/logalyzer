@@ -226,6 +226,7 @@ pub struct FilterLineHandler {
     match_case: bool,
     whole_word: bool,
     negative: bool,
+    extended: bool,
 }
 
 impl FilterLineHandler {
@@ -239,6 +240,7 @@ impl FilterLineHandler {
             match_case: user_settings.filter_match_case,
             whole_word: user_settings.filter_whole_word,
             negative: user_settings.filter_negative,
+            extended: user_settings.filter_extended,
         })
     }
 }
@@ -257,17 +259,67 @@ impl LineHandler for FilterLineHandler {
     }
 
     fn process_line(&mut self, line: &mut LineVec) {
-        let split_points = linevec_find(&line, &self.filter_term, self.match_case, self.whole_word);
-        let matched = !split_points.is_empty();
+        let mut search_terms: Vec<String> = Vec::new();
+        let mut is_and_term = false;
+
+        if self.extended {
+            // Parse extended filter terms with && and ||.
+            // For simplicity, we only support terms with either only "&&"" or only "||" for now.
+            if self.filter_term.contains("&&") {
+                is_and_term = true;
+                for part in self.filter_term.split("&&") {
+                    let trimmed = part.trim();
+                    if !trimmed.is_empty() {
+                        search_terms.push(trimmed.to_string());
+                    }
+                }
+            } else if self.filter_term.contains("||") {
+                is_and_term = false;
+                for part in self.filter_term.split("||") {
+                    let trimmed = part.trim();
+                    if !trimmed.is_empty() {
+                        search_terms.push(trimmed.to_string());
+                    }
+                }
+            } else {
+                search_terms.push(self.filter_term.clone());
+            }
+        } else {
+            search_terms.push(self.filter_term.clone());
+        }
+
+        let mut matched = if is_and_term { true } else { false };
+
+        for filter_term in search_terms.iter() {
+            let split_points = linevec_find(&line, filter_term, self.match_case, self.whole_word);
+            let filter_term_matched = !split_points.is_empty();
+            if is_and_term {
+                matched = matched && filter_term_matched;
+                if !matched {
+                    // Since we allow only either "AND" or "OR" terms, we can break early here, as
+                    // all the rest of the term will evaluate to false anyway.
+                    break;
+                }
+            } else {
+                matched = matched || filter_term_matched;
+                if matched {
+                    // Since we allow only either "AND" or "OR" terms, we can break early here, as
+                    // all the rest of the term will evaluate to true anyway.
+                    break;
+                }
+            }
+        }
 
         if !matched {
-            if self.negative {
-                return;
-            } else {
+            // Line does not match, so it should be filtered out.
+            if !self.negative {
+                // We are not in negative mode, so we clear the line.
                 line.clear();
             }
         } else {
+            // Line matches, so it should be kept.
             if self.negative {
+                // We are in negative mode, so we clear the line.
                 line.clear();
             }
         }

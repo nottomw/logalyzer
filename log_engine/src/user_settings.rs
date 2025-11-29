@@ -21,6 +21,7 @@ pub struct UserSettings {
     pub filter_match_case: bool,
     pub filter_whole_word: bool,
     pub filter_negative: bool,
+    pub filter_extended: bool,
     pub file_path: String,
     pub log_format: LogFormat,
     pub token_colors: Vec<(String, Color32)>,
@@ -42,6 +43,7 @@ struct UserSettingsSerDes {
     pub filter_match_case: bool,
     pub filter_whole_word: bool,
     pub filter_negative: bool,
+    pub filter_extended: bool,
     pub log_format_pattern: String,
     pub log_format_pattern_coloring: Vec<(u8, u8, u8, u8)>, // RGBA
     pub log_format_pattern_coloring_text: Vec<(u8, u8, u8, u8)>, // RGBA
@@ -63,6 +65,7 @@ impl UserSettings {
             filter_match_case: self.filter_match_case,
             filter_whole_word: self.filter_whole_word,
             filter_negative: self.filter_negative,
+            filter_extended: self.filter_extended,
             log_format_pattern: self.log_format.pattern.clone(),
             log_format_pattern_coloring: self
                 .log_format
@@ -134,6 +137,7 @@ impl UserSettings {
             filter_match_case: ser_des.filter_match_case,
             filter_whole_word: ser_des.filter_whole_word,
             filter_negative: ser_des.filter_negative,
+            filter_extended: ser_des.filter_extended,
             file_path: String::new(),
             log_format,
             token_colors,
@@ -157,6 +161,7 @@ impl Default for UserSettings {
             filter_match_case: false,
             filter_whole_word: false,
             filter_negative: false,
+            filter_extended: false,
             file_path: String::new(),
             log_format: LogFormat::default(),
             token_colors: Vec::with_capacity(25),

@@ -412,7 +412,6 @@ impl LogalyzerGUI {
             // let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
             // if button_stats.clicked() {
             //     println!("not implemented");
-            //     // TODO: implement stats
             // }
 
             let button_save_config = ui.button("Save config");
@@ -545,8 +544,12 @@ impl LogalyzerGUI {
 
                 ui.checkbox(&mut self.user_settings.filter_match_case, "Match Case");
                 ui.checkbox(&mut self.user_settings.filter_whole_word, "Whole Word");
-                ui.checkbox(&mut self.user_settings.filter_negative, "Negative");
-                // TODO: extended filtering: && and || support maybe
+                ui.checkbox(&mut self.user_settings.filter_negative, "Negative")
+                    .on_hover_text("Show lines that DO NOT match the filter term.");
+                ui.checkbox(&mut self.user_settings.filter_extended, "Extended")
+                    .on_hover_text(
+                        "Enable simple extended filtering with either only && clauses or only || clauses.\nExample: \"error && failed && stack trace\"\nExample: \"error || warning || info\"",
+                    );
                 // TODO: maybe option to show N lines before/after match
             });
         });
