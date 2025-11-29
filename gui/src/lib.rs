@@ -766,7 +766,6 @@ impl LogalyzerGUI {
     }
 
     fn scroll_to_search_result(&mut self, ui: &egui::Ui, row_range: &std::ops::Range<usize>) {
-        // If the search term is found, scroll to n-th occurence depending on the self.state.search_found_showing_index.
         if !self.state.search_found.is_empty() {
             let last_shown_different_or_init = (self.state.search_found_last_shown_index.is_none())
                 || (self.state.search_found_last_shown_index.unwrap()
@@ -775,18 +774,34 @@ impl LogalyzerGUI {
                 let poi = &self.state.search_found[self.state.search_found_showing_index];
                 let line_of_interest = poi.line;
 
-                // If we're not already showing the line, scroll to it.
-                if row_range.start > line_of_interest - 1 || row_range.end <= line_of_interest - 1 {
-                    let line_height = self.user_settings.font.size;
-                    let current_top_line_offset = row_range.start as f32 * line_height;
-                    let line_of_interest_offset = (line_of_interest as f32 - 1.0) * line_height;
+                let line_before_current_range = line_of_interest - 1 < row_range.start;
+                let line_after_current_range = line_of_interest - 1 >= row_range.end;
 
-                    // TODO: this delta should be adjusted to be more-or-less at the center of screen.
-                    let delta: f32 = line_of_interest_offset - current_top_line_offset;
+                if line_before_current_range {
+                    // Scrolling up.
+
+                    let line_diff = row_range.start as isize - (line_of_interest as isize - 1);
+                    let delta = (line_diff as f32) * self.user_settings.font.size;
+
+                    ui.scroll_with_delta(egui::vec2(0.0, delta));
+                } else if line_after_current_range {
+                    // Scrolling down.
+
+                    let line_diff = (line_of_interest as isize - 1) - row_range.end as isize + 1;
+                    let delta = (line_diff as f32) * self.user_settings.font.size;
 
                     ui.scroll_with_delta(egui::vec2(0.0, -delta));
                 } else {
-                    // Scrolling completed.
+                    // Reached the requested range, but do a last effort scroll to try and align
+                    // the line more to center of screen.
+
+                    let range_center = (row_range.start + row_range.end) / 2;
+                    let line_diff = line_of_interest as isize - 1 - range_center as isize;
+                    let delta = (line_diff as f32) * self.user_settings.font.size;
+
+                    ui.scroll_with_delta(egui::vec2(0.0, -delta));
+
+                    // Mark scrolling as completed.
                     self.state.search_found_last_shown_index =
                         Some(self.state.search_found_showing_index);
                 }
