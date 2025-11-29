@@ -1142,7 +1142,6 @@ impl eframe::App for LogalyzerGUI {
                 let log_file_contents_scroll_area_resp = egui::ScrollArea::both()
                     .id_salt("log_file")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
-                    .max_width(scroll_area_width_max)
                     .animated(false)
                     .scroll_source(self.scroll_sources_allowed)
                     .auto_shrink(false)
@@ -1151,6 +1150,7 @@ impl eframe::App for LogalyzerGUI {
                         self.user_settings.font.size,
                         visible_log_lines,
                         |ui, row_range| {
+                            ui.take_available_space();
                             ui.set_min_height(ui.available_height());
                             ui.scroll_with_delta(scroll_delta_keyboard);
 
@@ -1159,10 +1159,11 @@ impl eframe::App for LogalyzerGUI {
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {
                                 text_wrapping.break_anywhere = false;
+                            } else {
+                                ui.set_width(scroll_area_width_max);
                             }
 
                             text_wrapping.max_width = scroll_area_width_max;
-                            ui.set_width(scroll_area_width_max);
 
                             ui.vertical(|ui| {
                                 for row_index in row_range {
