@@ -673,6 +673,7 @@ impl LogalyzerGUI {
             .auto_sized()
             .collapsible(false)
             .open(&mut self.state.win_histogram_open)
+            .resizable(false)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
