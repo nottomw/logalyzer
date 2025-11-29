@@ -1,5 +1,6 @@
 use core::f32;
 
+use clap::Parser;
 use eframe::egui;
 use egui::containers::scroll_area::ScrollBarVisibility;
 use egui::text::{LayoutJob, TextWrapping};
@@ -8,7 +9,7 @@ use log_engine::OpenedFileMetadata;
 use log_engine::user_settings::UserSettings;
 use std::path::Path;
 
-pub fn run_gui(args: Vec<String>) {
+pub fn run_gui() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1200.0, 800.0]),
         ..Default::default()
@@ -17,7 +18,7 @@ pub fn run_gui(args: Vec<String>) {
     let run_result = eframe::run_native(
         "Logalyzer",
         options,
-        Box::new(|_cc| Ok(Box::new(LogalyzerGUI::new(args)) as Box<dyn eframe::App>)),
+        Box::new(|_cc| Ok(Box::new(LogalyzerGUI::new()) as Box<dyn eframe::App>)),
     );
 
     if run_result.is_err() {
@@ -89,43 +90,47 @@ struct LogalyzerGUI {
     scroll_sources_allowed: scroll_area::ScrollSource,
 }
 
+#[derive(Parser)]
+#[command(name = "logalyzer", version, about = "Logalyzer log analysis tool.", long_about = None)]
+struct LogalyzerArgs {
+    /// Path to the log file to open.
+    #[arg(short, long, long = "file")]
+    file_path: Option<String>,
+    /// Path to the configuration file to load.
+    #[arg(short, long, long = "config")]
+    config_path: Option<String>,
+}
+
 impl LogalyzerGUI {
-    fn new(args: Vec<String>) -> Self {
+    fn new() -> Self {
         let mut new_self = Self::default();
 
-        // TODO: use a proper arg parser
-        // For now processing cmdline args manually here as the params are super simple.
-        for arg in args.iter().skip(1) {
-            match arg.as_str() {
-                "--help" | "-h" => {
-                    println!("Logalyzer help:");
-                    println!("--file=<path> Specify the log file to open.");
-                    println!("--config=<path> Specify the configuration file to load.");
-                    std::process::exit(0);
-                }
-                _ => {
-                    if arg.starts_with("--file=") {
-                        let file_path = arg.trim_start_matches("--file=");
-                        new_self.user_settings.file_path = file_path.to_string();
+        let args = LogalyzerArgs::parse();
+        if let Some(file_path) = args.file_path {
+            if !Path::new(&file_path).exists() {
+                println!("Specified log file does not exist: {}", file_path);
+            } else {
+                new_self.user_settings.file_path = file_path;
+            }
+        }
+
+        if let Some(config_path_str) = args.config_path {
+            if !Path::new(&config_path_str).exists() {
+                println!("Specified config file does not exist: {}", config_path_str);
+            } else {
+                let config_path = Path::new(&config_path_str);
+                let user_settings_res = log_engine::configuration_load(config_path);
+                if let Ok(loaded_user_settings) = user_settings_res {
+                    let orig_file_path = new_self.user_settings.file_path.clone();
+
+                    {
+                        new_self.user_settings = loaded_user_settings.clone();
+                        new_self.user_settings_staging = loaded_user_settings;
                     }
 
-                    if arg.starts_with("--config=") {
-                        let config_path_str = arg.trim_start_matches("--config=");
-                        let config_path = Path::new(config_path_str);
-                        let user_settings_res = log_engine::configuration_load(config_path);
-                        if let Ok(loaded_user_settings) = user_settings_res {
-                            let orig_file_path = new_self.user_settings.file_path.clone();
-
-                            {
-                                new_self.user_settings = loaded_user_settings.clone();
-                                new_self.user_settings_staging = loaded_user_settings;
-                            }
-
-                            // Preserve currently opened file path.
-                            new_self.user_settings.file_path = orig_file_path.clone();
-                            new_self.user_settings_staging.file_path = orig_file_path;
-                        }
-                    }
+                    // Preserve currently opened file path.
+                    new_self.user_settings.file_path = orig_file_path.clone();
+                    new_self.user_settings_staging.file_path = orig_file_path;
                 }
             }
         }
