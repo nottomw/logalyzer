@@ -15,8 +15,10 @@ pub fn run_gui() {
         ..Default::default()
     };
 
+    let app_name = format!("Logalyzer ({})", env!("CARGO_PKG_VERSION"));
+
     let run_result = eframe::run_native(
-        "Logalyzer",
+        &app_name,
         options,
         Box::new(|_cc| Ok(Box::new(LogalyzerGUI::new()) as Box<dyn eframe::App>)),
     );
