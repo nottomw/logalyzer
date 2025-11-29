@@ -1,6 +1,9 @@
 # Logalyzer
 Logalyzer is a simple tool to help with reading and analyzing log files.
 
+![build](https://github.com/nottomw/logalyzer/actions/workflows/logalyzer.yml/badge.svg)
+![tests](https://github.com/nottomw/logalyzer/actions/workflows/logalyzer-tests.yml/badge.svg)
+
 ## Status
 TBD
 
