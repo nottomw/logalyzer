@@ -1,4 +1,4 @@
-name: logalyzer
+name: logalyzer-test
 
 on:
   push:
