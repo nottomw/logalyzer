@@ -46,6 +46,7 @@ struct UserSettingsSerDes {
     pub log_format_pattern_coloring_text_use_original: Vec<bool>,
     pub token_colors: Vec<(String, (u8, u8, u8, u8))>, // token_name, RGBA
     pub font_size: f32,
+    pub comments_visible: bool,
 }
 
 impl UserSettings {
@@ -83,6 +84,7 @@ impl UserSettings {
                 .map(|(name, color)| (name.clone(), (color.r(), color.g(), color.b(), color.a())))
                 .collect(),
             font_size: self.font.size,
+            comments_visible: self.comments_visible,
         };
 
         let serialized = serde_json::to_string_pretty(&ser_des)?;
@@ -134,7 +136,7 @@ impl UserSettings {
             log_format,
             token_colors,
             font: FontId::monospace(ser_des.font_size),
-            comments_visible: true,
+            comments_visible: ser_des.comments_visible,
         })
     }
 }
