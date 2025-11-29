@@ -478,6 +478,18 @@ impl LogalyzerGUI {
                         .id_salt("search_input"),
                 );
 
+                if textedit_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    // On enter in search input move to next result.
+                    if !self.state.search_found.is_empty() {
+                        self.state.search_found_showing_index =
+                            (self.state.search_found_showing_index + 1)
+                                % self.state.search_found.len();
+                    }
+
+                    // Keep the focus.
+                    textedit_search.request_focus();
+                }
+
                 if let FocusRequests::Search = self.state.focus_request {
                     textedit_search.request_focus();
                     self.state.focus_request = FocusRequests::None;
