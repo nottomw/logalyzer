@@ -26,6 +26,8 @@ pub struct UserSettings {
     pub token_colors: Vec<(String, Color32)>,
     pub font: FontId,
     pub comments_visible: bool,
+    pub histogram_search_term: String,
+    pub histogram_match_case: bool,
 }
 
 // Just a struct that doesnt use egui types, for ser/des; Q&D hack.
@@ -137,6 +139,8 @@ impl UserSettings {
             token_colors,
             font: FontId::monospace(ser_des.font_size),
             comments_visible: ser_des.comments_visible,
+            histogram_search_term: String::new(),
+            histogram_match_case: false,
         })
     }
 }
@@ -158,6 +162,8 @@ impl Default for UserSettings {
             token_colors: Vec::with_capacity(25),
             font: FontId::monospace(12.0),
             comments_visible: true,
+            histogram_search_term: String::new(),
+            histogram_match_case: false,
         };
 
         // Initialize the colors in token_colors to some default values.

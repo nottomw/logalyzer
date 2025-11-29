@@ -47,6 +47,7 @@ struct LogalyzerState {
     search_found_last_shown_index: Option<usize>,
     win_log_format_open: bool,
     panel_token_colors_open: bool,
+    win_histogram_open: bool,
     log_format_mode_selected: usize,
     lines_wrapped: usize,
     log_scroll_area_width: f32,
@@ -68,6 +69,7 @@ impl Default for LogalyzerState {
             search_found_last_shown_index: None,
             win_log_format_open: false,
             panel_token_colors_open: false,
+            win_histogram_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
             lines_wrapped: 0,
             log_scroll_area_width: 0.0,
@@ -404,15 +406,14 @@ impl LogalyzerGUI {
 
             let button_histogram = ui.add_enabled(file_opened, egui::Button::new("Histogram"));
             if button_histogram.clicked() {
-                println!("not implemented");
-                // TODO: implement histogram
+                self.state.win_histogram_open = !self.state.win_histogram_open;
             }
 
-            let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
-            if button_stats.clicked() {
-                println!("not implemented");
-                // TODO: implement stats
-            }
+            // let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
+            // if button_stats.clicked() {
+            //     println!("not implemented");
+            //     // TODO: implement stats
+            // }
 
             let button_save_config = ui.button("Save config");
             if button_save_config.clicked() {
@@ -587,6 +588,189 @@ impl LogalyzerGUI {
                     });
                 });
         }
+    }
+
+    // Returns (line_range_start, line_range_end, number_of_entries)
+    fn histogram_find_matches(
+        &self,
+        number_of_bars: usize,
+        match_case: bool,
+    ) -> Vec<(usize, usize, usize)> {
+        let mut matches = Vec::new();
+
+        if self.user_settings_staging.histogram_search_term.is_empty() {
+            return matches;
+        }
+
+        if let Some(opened_file) = &self.state.opened_file {
+            let line_range_size = ((opened_file.content_line_count as f64)
+                / (number_of_bars as f64))
+                .floor() as usize;
+
+            for bar_index in 0..number_of_bars {
+                let line_range_start = bar_index * line_range_size;
+                let mut line_range_end = (bar_index + 1) * line_range_size;
+                if bar_index == number_of_bars - 1 {
+                    line_range_end = opened_file.content_line_count;
+                }
+
+                // Grab all lines from the range.
+                let lines_in_range = opened_file
+                    .content
+                    .lines()
+                    .skip(line_range_start)
+                    .take(line_range_end - line_range_start)
+                    .map(|line| {
+                        if !match_case {
+                            line.to_lowercase()
+                        } else {
+                            line.to_string()
+                        }
+                    });
+
+                let search_term = if !match_case {
+                    self.user_settings_staging
+                        .histogram_search_term
+                        .to_lowercase()
+                } else {
+                    self.user_settings_staging.histogram_search_term.clone()
+                };
+
+                let matches_in_range = lines_in_range
+                    .filter(|line| line.contains(&search_term))
+                    .count();
+
+                matches.push((line_range_start + 1, line_range_end, matches_in_range));
+            }
+        }
+
+        matches
+    }
+
+    fn show_histogram_window(&mut self, ctx: &egui::Context) {
+        let mut histogram_matches: Vec<(usize, usize, usize)> = Vec::new();
+        let number_of_bars = 10;
+
+        if !self.user_settings_staging.histogram_search_term.is_empty() {
+            histogram_matches = self.histogram_find_matches(
+                number_of_bars,
+                self.user_settings_staging.histogram_match_case,
+            );
+        }
+
+        egui::Window::new("Histogram")
+            .auto_sized()
+            .collapsible(false)
+            .open(&mut self.state.win_histogram_open)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Histogram term:");
+                        ui.add_sized(
+                            [300.0, 20.0],
+                            egui::TextEdit::singleline(
+                                &mut self.user_settings_staging.histogram_search_term,
+                            )
+                            .id_salt("histogram_search_input"),
+                        );
+
+                        ui.checkbox(
+                            &mut self.user_settings_staging.histogram_match_case,
+                            "Match case",
+                        );
+                    });
+
+                    let mut highest_count_index: usize = 0;
+                    let mut lowest_count_index: isize = -1;
+
+                    for (i, (_, _, count)) in histogram_matches.iter().enumerate() {
+                        if histogram_matches[highest_count_index].2 < *count {
+                            highest_count_index = i;
+                        }
+
+                        if (lowest_count_index == -1
+                            || histogram_matches[lowest_count_index as usize].2 > *count)
+                            && (*count > 0)
+                        {
+                            lowest_count_index = i as isize;
+                        }
+                    }
+
+                    if lowest_count_index == -1 {
+                        lowest_count_index = 0; // just to have some value
+                    }
+
+                    ui.add_space(5.0);
+
+                    egui::Grid::new("histogram_grid")
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            let mut range_index = 0;
+
+                            ui.label("Range");
+                            ui.label("Count");
+                            ui.label("");
+                            ui.end_row();
+
+                            if histogram_matches.len() != 0 {
+                                for (hist_start, hist_end, hist_count) in histogram_matches.iter() {
+                                    ui.label(format!("{} - {}", hist_start, hist_end));
+
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.label(format!("{}", hist_count));
+                                        },
+                                    );
+
+                                    let bar_height = self.user_settings.font.size;
+                                    let bar_width_max = 350.0;
+                                    let bar_width = if histogram_matches[highest_count_index].2 > 0
+                                    {
+                                        ((*hist_count as f32)
+                                            / (histogram_matches[highest_count_index].2 as f32))
+                                            * bar_width_max
+                                    } else {
+                                        0.0
+                                    };
+                                    let bar_color = if range_index == highest_count_index {
+                                        egui::Color32::LIGHT_RED
+                                    } else if range_index == lowest_count_index as usize {
+                                        egui::Color32::LIGHT_GREEN
+                                    } else {
+                                        egui::Color32::LIGHT_BLUE
+                                    };
+
+                                    let (response, painter) = ui.allocate_painter(
+                                        Vec2::new(bar_width, bar_height),
+                                        egui::Sense::empty(),
+                                    );
+
+                                    let rect = response.rect;
+                                    painter.rect_filled(rect, 0.0, bar_color);
+
+                                    ui.end_row();
+
+                                    range_index += 1;
+                                }
+                            } else {
+                                for _ in 0..number_of_bars {
+                                    // Draw the table anyway with empty fields.
+                                    ui.label("-");
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.label("0");
+                                        },
+                                    );
+
+                                    ui.label("");
+                                    ui.end_row();
+                                }
+                            }
+                        });
+                });
+            });
     }
 
     fn recalculate_logfile_display(&mut self) {
@@ -916,6 +1100,7 @@ impl eframe::App for LogalyzerGUI {
 
         self.show_log_format_window(ctx);
         self.show_token_colors_panel(ctx);
+        self.show_histogram_window(ctx);
 
         self.recalculate_logfile_display();
 
