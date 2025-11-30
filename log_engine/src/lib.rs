@@ -20,6 +20,8 @@ pub struct PointOfInterest {
     pub split_point: SplitPoint,
 }
 
+// TODO: this should be a trait and have multiple impls, depending on what really is opened
+// (a file, multiple files concantenated into one, a live log stream, etc)
 pub struct OpenedFileMetadata {
     pub path: String,
     pub content: String,
