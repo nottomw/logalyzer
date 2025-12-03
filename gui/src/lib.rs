@@ -569,7 +569,11 @@ impl LogalyzerGUI {
                 .resizable(false)
                 .default_width(200.0)
                 .show(ctx, |ui| {
-                    ui.heading("Token colors");
+                    ui.vertical_centered(|ui| {
+                        ui.heading("Token Colors");
+                    });
+                    ui.separator();
+                    ui.add_space(5.0);
 
                     egui::Grid::new("tokens_grid").show(ui, |ui| {
                         for i in 0..self.user_settings_staging.token_colors.capacity() {
