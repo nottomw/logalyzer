@@ -94,7 +94,8 @@ pub fn default_log_content() -> LayoutJob {
     Keyboard shortcuts:\n\
     Ctrl + F: search\n\
     Ctrl + I: filter\n\
-    Ctrl + T: toggle token colors panel\n",
+    Ctrl + T: toggle token colors panel\n\
+    Ctrl + H: toggle histogram window\n\n",
         env!("CARGO_PKG_VERSION")
     );
 

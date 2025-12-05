@@ -144,6 +144,7 @@ impl LogalyzerGUI {
         // Ctrl + F => focus search box
         // Ctrl + G => focus filter box
         // Ctrl + T => open tokens panel
+        // Ctrl + H => open histogram window
 
         let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
         if ctrl_pressed {
@@ -157,6 +158,12 @@ impl LogalyzerGUI {
 
             if ui.input(|i| i.key_pressed(egui::Key::T)) {
                 self.state.panel_token_colors_open = !self.state.panel_token_colors_open;
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::H)) {
+                if self.state.opened_file.is_some() {
+                    self.state.win_histogram_open = !self.state.win_histogram_open;
+                }
             }
         }
     }
