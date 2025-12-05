@@ -687,7 +687,7 @@ impl LogalyzerGUI {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
+                    let user_input_for_histogram_lay = ui.horizontal(|ui| {
                         ui.label("Histogram term:");
                         ui.add_sized(
                             [300.0, 20.0],
@@ -702,6 +702,9 @@ impl LogalyzerGUI {
                             "Match case",
                         );
                     });
+
+                    let user_input_for_histogram_lay_width =
+                        user_input_for_histogram_lay.response.rect.width();
 
                     let mut highest_count_index: usize = 0;
                     let mut lowest_count_index: isize = -1;
@@ -730,35 +733,63 @@ impl LogalyzerGUI {
                         .show(ui, |ui| {
                             let mut range_index = 0;
 
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("Range");
-                            });
+                            let label_range = ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::RIGHT),
+                                |ui| {
+                                    ui.label("Range");
+                                },
+                            );
 
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("Count");
-                            });
+                            let label_count = ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::RIGHT),
+                                |ui| {
+                                    ui.label("Count");
+                                },
+                            );
 
                             ui.label("");
+
+                            let label_range_width = label_range.response.rect.width();
+                            let label_count_width = label_count.response.rect.width();
+
                             ui.end_row();
 
                             if histogram_matches.len() != 0 {
                                 for (hist_start, hist_end, hist_count) in histogram_matches.iter() {
-                                    ui.with_layout(
+                                    let lay1 = ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::RIGHT),
                                         |ui| {
                                             ui.label(format!("{} - {}", hist_start, hist_end));
                                         },
                                     );
 
-                                    ui.with_layout(
+                                    let lay2 = ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::RIGHT),
                                         |ui| {
                                             ui.label(format!("{}", hist_count));
                                         },
                                     );
 
+                                    let lay1_width = lay1.response.rect.width();
+                                    let lay2_width = lay2.response.rect.width();
+
+                                    let first_two_columns_width =
+                                        if lay1_width > label_range_width {
+                                            lay1_width
+                                        } else {
+                                            label_range_width
+                                        } + if lay2_width > label_count_width {
+                                            lay2_width
+                                        } else {
+                                            label_count_width
+                                        };
+
                                     let bar_height = self.user_settings.font.size;
-                                    let bar_width_max = 350.0;
+                                    let bar_width_max = user_input_for_histogram_lay_width
+                                        - first_two_columns_width
+                                        - ui.spacing().item_spacing.x * 3.0
+                                        - 5.0; // some small padding
+
                                     let bar_width = if histogram_matches[highest_count_index].2 > 0
                                     {
                                         ((*hist_count as f32)
