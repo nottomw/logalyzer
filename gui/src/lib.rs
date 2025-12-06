@@ -51,6 +51,7 @@ struct LogalyzerState {
     win_log_format_open: bool,
     panel_token_colors_open: bool,
     win_histogram_open: bool,
+    win_histogram_should_focus: bool,
     log_format_mode_selected: usize,
     lines_wrapped: usize,
     log_scroll_area_width: f32,
@@ -73,6 +74,7 @@ impl Default for LogalyzerState {
             win_log_format_open: false,
             panel_token_colors_open: false,
             win_histogram_open: false,
+            win_histogram_should_focus: false,
             log_format_mode_selected: 0, // 0 means manual regex
             lines_wrapped: 0,
             log_scroll_area_width: 0.0,
@@ -163,6 +165,9 @@ impl LogalyzerGUI {
             if ui.input(|i| i.key_pressed(egui::Key::H)) {
                 if self.state.opened_file.is_some() {
                     self.state.win_histogram_open = !self.state.win_histogram_open;
+                    if self.state.win_histogram_open {
+                        self.state.win_histogram_should_focus = true;
+                    }
                 }
             }
         }
@@ -422,6 +427,9 @@ impl LogalyzerGUI {
             let button_histogram = ui.add_enabled(file_opened, egui::Button::new("Histogram"));
             if button_histogram.clicked() {
                 self.state.win_histogram_open = !self.state.win_histogram_open;
+                if self.state.win_histogram_open {
+                    self.state.win_histogram_should_focus = true;
+                }
             }
 
             // let button_stats = ui.add_enabled(file_opened, egui::Button::new("Stats"));
@@ -689,13 +697,18 @@ impl LogalyzerGUI {
                 ui.vertical(|ui| {
                     let user_input_for_histogram_lay = ui.horizontal(|ui| {
                         ui.label("Histogram term:");
-                        ui.add_sized(
+                        let histogram_term_input = ui.add_sized(
                             [300.0, 20.0],
                             egui::TextEdit::singleline(
                                 &mut self.user_settings_staging.histogram_search_term,
                             )
                             .id_salt("histogram_search_input"),
                         );
+
+                        if self.state.win_histogram_should_focus {
+                            histogram_term_input.request_focus();
+                            self.state.win_histogram_should_focus = false;
+                        }
 
                         ui.checkbox(
                             &mut self.user_settings_staging.histogram_match_case,
