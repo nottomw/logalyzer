@@ -105,6 +105,9 @@ struct LogalyzerArgs {
     config_path: Option<String>,
 }
 
+// (line_range_start, line_range_end, number_of_entries)
+type HistogramMatch = (usize, usize, usize);
+
 impl LogalyzerGUI {
     fn new() -> Self {
         let mut new_self = Self::default();
@@ -620,12 +623,11 @@ impl LogalyzerGUI {
         }
     }
 
-    // Returns (line_range_start, line_range_end, number_of_entries)
     fn histogram_find_matches(
         &self,
         number_of_bars: usize,
         match_case: bool,
-    ) -> Vec<(usize, usize, usize)> {
+    ) -> Vec<HistogramMatch> {
         let mut matches = Vec::new();
 
         if self.user_settings_staging.histogram_search_term.is_empty() {
@@ -677,6 +679,63 @@ impl LogalyzerGUI {
         matches
     }
 
+    fn histogram_matches_calc_color(matches: &Vec<HistogramMatch>) -> Vec<egui::Color32> {
+        let mut matches_cloned = matches.clone();
+
+        // Sort ascending by count.
+        matches_cloned.sort_by(|a, b| a.2.cmp(&b.2));
+
+        let mut matches_sorted_with_color: Vec<(HistogramMatch, egui::Color32)> =
+            Vec::with_capacity(matches.len());
+
+        // Hilight the lowest value, highest value and median in distinct color.
+        let highest_entry_value = matches_cloned.last().map(|x| x.2).unwrap_or(0);
+        let mut last_count: Option<usize> = None;
+        for (i, (line_range_start, line_range_end, count)) in matches_cloned.iter().enumerate() {
+            let color = if let Some(last_count_val) = last_count {
+                if *count == last_count_val {
+                    // Same count as last, use same color, except if this is median.
+                    if i == matches_cloned.len() / 2 {
+                        egui::Color32::CYAN // median
+                    } else {
+                        matches_sorted_with_color
+                            .last()
+                            .map(|(_, color)| *color)
+                            .unwrap_or(egui::Color32::LIGHT_GREEN)
+                    }
+                } else if *count == highest_entry_value {
+                    // Highest value, always red.
+                    egui::Color32::LIGHT_RED
+                } else {
+                    if i == matches_cloned.len() / 2 {
+                        egui::Color32::CYAN // median
+                    } else {
+                        egui::Color32::LIGHT_BLUE // everything else
+                    }
+                }
+            } else {
+                egui::Color32::LIGHT_GREEN // first lowest value
+            };
+
+            matches_sorted_with_color.push(((*line_range_start, *line_range_end, *count), color));
+
+            last_count = Some(*count);
+        }
+
+        let matches_sorted_by_range: Vec<((usize, usize, usize), egui::Color32)> = {
+            let mut v = matches_sorted_with_color.clone();
+            v.sort_by(|a, b| a.0.cmp(&b.0)); // sort ascending by line range start
+            v
+        };
+
+        let colors = matches_sorted_by_range
+            .iter()
+            .map(|(_, color)| *color)
+            .collect();
+
+        colors
+    }
+
     fn show_histogram_window(&mut self, ctx: &egui::Context) {
         let mut histogram_matches: Vec<(usize, usize, usize)> = Vec::new();
         let number_of_bars = 10;
@@ -718,26 +777,6 @@ impl LogalyzerGUI {
 
                     let user_input_for_histogram_lay_width =
                         user_input_for_histogram_lay.response.rect.width();
-
-                    let mut highest_count_index: usize = 0;
-                    let mut lowest_count_index: isize = -1;
-
-                    for (i, (_, _, count)) in histogram_matches.iter().enumerate() {
-                        if histogram_matches[highest_count_index].2 < *count {
-                            highest_count_index = i;
-                        }
-
-                        if (lowest_count_index == -1
-                            || histogram_matches[lowest_count_index as usize].2 > *count)
-                            && (*count > 0)
-                        {
-                            lowest_count_index = i as isize;
-                        }
-                    }
-
-                    if lowest_count_index == -1 {
-                        lowest_count_index = 0; // just to have some value
-                    }
 
                     ui.add_space(5.0);
 
@@ -803,21 +842,26 @@ impl LogalyzerGUI {
                                         - ui.spacing().item_spacing.x * 3.0
                                         - 5.0; // some small padding
 
-                                    let bar_width = if histogram_matches[highest_count_index].2 > 0
+                                    let mut bar_width = if let Some((_, _, max_count)) =
+                                        histogram_matches.iter().max_by_key(|x| x.2)
                                     {
-                                        ((*hist_count as f32)
-                                            / (histogram_matches[highest_count_index].2 as f32))
-                                            * bar_width_max
+                                        if *max_count > 0 {
+                                            ((*hist_count as f32) / (*max_count as f32))
+                                                * bar_width_max
+                                        } else {
+                                            0.0
+                                        }
                                     } else {
                                         0.0
                                     };
-                                    let bar_color = if range_index == highest_count_index {
-                                        egui::Color32::LIGHT_RED
-                                    } else if range_index == lowest_count_index as usize {
-                                        egui::Color32::LIGHT_GREEN
-                                    } else {
-                                        egui::Color32::LIGHT_BLUE
-                                    };
+
+                                    if bar_width == 0.0 {
+                                        bar_width = 5.0; // minimal visible bar
+                                    }
+
+                                    let bar_color = LogalyzerGUI::histogram_matches_calc_color(
+                                        &histogram_matches,
+                                    )[range_index];
 
                                     let (response, painter) = ui.allocate_painter(
                                         Vec2::new(bar_width, bar_height),
