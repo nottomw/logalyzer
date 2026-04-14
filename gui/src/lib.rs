@@ -59,6 +59,7 @@ struct LogalyzerState {
     add_comment_request: Option<AddCommentRequest>,
     add_comment_window_open: bool,
     visible_line_offsets: log_engine::VisibleLineOffsets,
+    title_file_name: String,
 }
 
 impl Default for LogalyzerState {
@@ -82,6 +83,7 @@ impl Default for LogalyzerState {
             add_comment_request: None,
             add_comment_window_open: false,
             visible_line_offsets: log_engine::VisibleLineOffsets::default(),
+            title_file_name: String::new(),
         }
     }
 }
@@ -1231,6 +1233,15 @@ impl eframe::App for LogalyzerGUI {
         self.show_histogram_window(ctx);
 
         self.recalculate_logfile_display();
+
+        // Update window title
+        if self.state.opened_file.is_some()
+            && self.state.title_file_name != self.state.opened_file.as_ref().unwrap().path
+        {
+            let new_title = format!("Logalyzer - {}", self.user_settings.file_path);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(new_title.clone()));
+            self.state.title_file_name = self.state.opened_file.as_ref().unwrap().path.clone();
+        }
 
         let visible_log_lines = self.state.line_no_jobs.len();
 
