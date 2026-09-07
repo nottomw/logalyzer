@@ -472,7 +472,7 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 0);
     }
 
@@ -482,13 +482,13 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
         let mut line_no_match: LineVec =
             vec![("This is a normal line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -498,7 +498,7 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
@@ -506,7 +506,7 @@ mod tests {
             "This is an error message".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -516,13 +516,13 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an Error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an Error line");
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -532,7 +532,7 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
@@ -540,7 +540,7 @@ mod tests {
             "This is an erroring line".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -550,13 +550,13 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is a normal line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is a normal line");
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -569,13 +569,13 @@ mod tests {
             "This is an erroring line".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an erroring line");
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -585,13 +585,13 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
         let mut line_no_match: LineVec =
             vec![("This is an Error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -601,7 +601,7 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
@@ -609,7 +609,7 @@ mod tests {
             "This is an error message".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -619,19 +619,19 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
         let mut line_warning: LineVec =
             vec![("This is a warning line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_warning);
+        uut.process_line(&mut line_warning, 0);
         assert_eq!(line_warning.len(), 1);
         assert_eq!(line_warning[0].0, "This is a warning line");
 
         let mut line_no_match: LineVec =
             vec![("This is a normal line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -644,13 +644,13 @@ mod tests {
             "This is an error message".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error message");
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -660,18 +660,18 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is a normal line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is a normal line");
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
 
         let mut line_no_match_warning: LineVec =
             vec![("This is a warning line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match_warning);
+        uut.process_line(&mut line_no_match_warning, 0);
         assert_eq!(line_no_match_warning.len(), 0);
     }
 
@@ -681,13 +681,13 @@ mod tests {
         assert!(uut.is_active());
 
         let mut line: LineVec = vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error line");
 
         let mut line_no_match: LineVec =
             vec![("This is a normal line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 
@@ -700,19 +700,19 @@ mod tests {
             "This is an error warning".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 0);
 
         let mut line_no_match: LineVec =
             vec![("This is an error line".to_string(), TextFormat::default())];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
 
         let mut line = vec![(
             "This is a error && warning line".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is a error && warning line");
     }
@@ -726,7 +726,7 @@ mod tests {
             "This is an error || warning".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line);
+        uut.process_line(&mut line, 0);
         assert_eq!(line.len(), 1);
         assert_eq!(line[0].0, "This is an error || warning");
 
@@ -734,7 +734,7 @@ mod tests {
             "This is a normal error or warning line".to_string(),
             TextFormat::default(),
         )];
-        uut.process_line(&mut line_no_match);
+        uut.process_line(&mut line_no_match, 0);
         assert_eq!(line_no_match.len(), 0);
     }
 }
