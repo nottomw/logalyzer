@@ -558,7 +558,8 @@ impl LogalyzerGUI {
             if self.state.opened_file.is_some() && comments_available {
                 ui.label(format!(
                     "{} / {}",
-                    self.state.comments_showing_index, comments_count
+                    self.state.comments_showing_index + 1,
+                    comments_count
                 ));
             }
         });
