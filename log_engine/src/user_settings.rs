@@ -27,8 +27,10 @@ pub struct UserSettings {
     pub token_colors: Vec<(String, Color32)>,
     pub font: FontId,
     pub comments_visible: bool,
+    pub comments_only: bool,
     pub histogram_search_term: String,
     pub histogram_match_case: bool,
+    pub goto_line_number: String,
 }
 
 // Just a struct that doesnt use egui types, for ser/des; Q&D hack.
@@ -51,6 +53,8 @@ struct UserSettingsSerDes {
     pub token_colors: Vec<(String, (u8, u8, u8, u8))>, // token_name, RGBA
     pub font_size: f32,
     pub comments_visible: bool,
+    pub comments_only: bool,
+    pub goto_line_number: String,
 }
 
 impl UserSettings {
@@ -90,6 +94,8 @@ impl UserSettings {
                 .collect(),
             font_size: self.font.size,
             comments_visible: self.comments_visible,
+            comments_only: self.comments_only,
+            goto_line_number: String::new(),
         };
 
         let serialized = serde_json::to_string_pretty(&ser_des)?;
@@ -143,8 +149,10 @@ impl UserSettings {
             token_colors,
             font: FontId::monospace(ser_des.font_size),
             comments_visible: ser_des.comments_visible,
+            comments_only: ser_des.comments_only,
             histogram_search_term: String::new(),
             histogram_match_case: false,
+            goto_line_number: String::new(),
         })
     }
 }
@@ -167,8 +175,10 @@ impl Default for UserSettings {
             token_colors: Vec::with_capacity(25),
             font: FontId::monospace(12.0),
             comments_visible: true,
+            comments_only: false,
             histogram_search_term: String::new(),
             histogram_match_case: false,
+            goto_line_number: String::new(),
         };
 
         // Initialize the colors in token_colors to some default values.

@@ -48,10 +48,13 @@ struct LogalyzerState {
     search_found: Vec<log_engine::PointOfInterest>,
     search_found_showing_index: usize,
     search_found_last_shown_index: Option<usize>,
+    comments_showing_index: usize,
+    comments_last_shown_index: Option<usize>,
     win_log_format_open: bool,
     panel_token_colors_open: bool,
     win_histogram_open: bool,
     win_histogram_should_focus: bool,
+    win_gotoline_open: bool,
     log_format_mode_selected: usize,
     lines_wrapped: usize,
     log_scroll_area_width: f32,
@@ -72,10 +75,13 @@ impl Default for LogalyzerState {
             search_found: Vec::new(),
             search_found_showing_index: 0,
             search_found_last_shown_index: None,
+            comments_showing_index: 0,
+            comments_last_shown_index: None,
             win_log_format_open: false,
             panel_token_colors_open: false,
             win_histogram_open: false,
             win_histogram_should_focus: false,
+            win_gotoline_open: false,
             log_format_mode_selected: 0, // 0 means manual regex
             lines_wrapped: 0,
             log_scroll_area_width: 0.0,
@@ -149,9 +155,10 @@ impl LogalyzerGUI {
 
     fn check_keyboard_shortcuts(&mut self, ui: &egui::Ui) {
         // Ctrl + F => focus search box
-        // Ctrl + G => focus filter box
+        // Ctrl + I => focus filter box
         // Ctrl + T => open tokens panel
         // Ctrl + H => open histogram window
+        // Ctrl + G => go to line
 
         let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
         if ctrl_pressed {
@@ -173,6 +180,12 @@ impl LogalyzerGUI {
                     if self.state.win_histogram_open {
                         self.state.win_histogram_should_focus = true;
                     }
+                }
+            }
+
+            if ui.input(|i| i.key_pressed(egui::Key::G)) {
+                if self.state.opened_file.is_some() {
+                    self.state.win_gotoline_open = true;
                 }
             }
         }
@@ -490,6 +503,64 @@ impl LogalyzerGUI {
                 file_opened,
                 egui::Checkbox::new(&mut self.user_settings.comments_visible, "Comments"),
             );
+
+            ui.add_enabled(
+                file_opened,
+                egui::Checkbox::new(&mut self.user_settings.comments_only, "Comments only"),
+            );
+
+            let comments_count = if self.state.opened_file.is_some() {
+                self.state.opened_file.as_ref().unwrap().log_comments.len()
+            } else {
+                0
+            };
+
+            let comments_available = if self.state.opened_file.is_some() {
+                comments_count > 0
+            } else {
+                false
+            };
+
+            let button_prev_comment = ui.add_enabled(
+                file_opened && comments_available,
+                egui::Button::new("Previous Comment"),
+            );
+
+            if button_prev_comment.clicked() {
+                let last_index = self.state.comments_showing_index;
+                if self.state.comments_showing_index == 0 {
+                    self.state.comments_showing_index = comments_count - 1;
+                } else {
+                    self.state.comments_showing_index -= 1;
+                }
+
+                if self.state.comments_last_shown_index.is_none() {
+                    self.state.comments_last_shown_index = Some(last_index);
+                }
+            }
+
+            let button_next_comment = ui.add_enabled(
+                file_opened && comments_available,
+                egui::Button::new("Next Comment"),
+            );
+
+            if button_next_comment.clicked() {
+                let last_index = self.state.comments_showing_index;
+                self.state.comments_showing_index =
+                    (self.state.comments_showing_index + 1) % comments_count;
+
+                if self.state.comments_last_shown_index.is_none() {
+                    self.state.comments_last_shown_index = Some(last_index);
+                }
+            }
+
+            // Show N/X, where N is the current comment being shown and X is the total number of comments.
+            if self.state.opened_file.is_some() && comments_available {
+                ui.label(format!(
+                    "{} / {}",
+                    self.state.comments_showing_index, comments_count
+                ));
+            }
         });
     }
 
@@ -903,6 +974,35 @@ impl LogalyzerGUI {
             });
     }
 
+    fn show_gotoline_window(&mut self, ctx: &egui::Context) {
+        egui::Window::new("Go to line")
+            .auto_sized()
+            .collapsible(false)
+            .open(&mut self.state.win_gotoline_open) // this controls whether the window is open, but also shows the "X" to close the window...
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Line number:");
+                        let line_number_text_edit = ui
+                            .text_edit_singleline(&mut self.user_settings_staging.goto_line_number);
+                        line_number_text_edit.request_focus();
+
+                        let button_go = ui.add(egui::Button::new("Go"));
+
+                        if button_go.clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                            if let Ok(line_number) =
+                                self.user_settings_staging.goto_line_number.parse::<usize>()
+                            {
+                                self.user_settings_staging.goto_line_number =
+                                    line_number.to_string();
+                                self.user_settings.goto_line_number = line_number.to_string();
+                            }
+                        }
+                    });
+                });
+            });
+    }
+
     fn recalculate_logfile_display(&mut self) {
         // TODO: log job recalc should be offloaded to a separate thread
         if self.user_settings.file_path.is_empty() == false {
@@ -922,6 +1022,9 @@ impl LogalyzerGUI {
                         self.state.search_found = Vec::new();
                         self.state.search_found_showing_index = 0;
                         self.state.search_found_last_shown_index = None;
+
+                        self.state.comments_showing_index = 0;
+                        self.state.comments_last_shown_index = None;
                     }
                 }
             } else {
@@ -940,6 +1043,10 @@ impl LogalyzerGUI {
                         self.state.search_found = points_of_interest;
                         self.state.search_found_showing_index = 0;
                         self.state.search_found_last_shown_index = None;
+
+                        self.state.comments_showing_index = 0;
+                        self.state.comments_last_shown_index = None;
+
                         self.state.visible_line_offsets = visible_line_offsets;
                     }
                 }
@@ -1135,6 +1242,105 @@ impl LogalyzerGUI {
         }
     }
 
+    fn scroll_to_line(
+        &mut self,
+        ui: &egui::Ui,
+        row_range: &std::ops::Range<usize>,
+        line_number: usize,
+    ) -> bool {
+        // Our "point of interest" in this case is the line_number.
+        let line_of_interest = line_number;
+
+        let line_before_current_range = line_of_interest < row_range.start;
+        let line_after_current_range = line_of_interest > row_range.end;
+
+        let lines_currently_available = self.state.line_no_jobs.len();
+
+        if line_of_interest > lines_currently_available {
+            // Out of bounds, report line reached to prevent endless scrolling.
+            return true;
+        }
+
+        if line_before_current_range {
+            // Scrolling up.
+
+            let line_diff = row_range.start as isize - line_of_interest as isize;
+            let delta = (line_diff as f32) * self.user_settings.font.size;
+
+            ui.scroll_with_delta(egui::vec2(0.0, delta));
+        } else if line_after_current_range {
+            // Scrolling down.
+
+            let line_diff = (line_of_interest as isize - 1) - row_range.end as isize + 1;
+            let delta = (line_diff as f32) * self.user_settings.font.size;
+
+            ui.scroll_with_delta(egui::vec2(0.0, -delta));
+        } else {
+            // Reached the requested range, but do a last effort scroll to try and align
+            // the line more to center of screen.
+
+            let range_center = (row_range.start + row_range.end) / 2;
+            let line_diff = line_of_interest as isize - 1 - range_center as isize;
+            let delta = (line_diff as f32) * self.user_settings.font.size;
+
+            ui.scroll_with_delta(egui::vec2(0.0, -delta));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // Scroll to the comment requested by next/prev buttons.
+    fn scroll_to_comment(
+        &mut self,
+        ui: &egui::Ui,
+        row_range: &std::ops::Range<usize>,
+        comment_index: usize, // TODO: this should be comment_number
+    ) {
+        // HACK: grab the hashmap, sort by key, index by comment_index to get the line number.
+        let mut comment_lines = Vec::new();
+        for (line_no, _) in &self.state.opened_file.as_ref().unwrap().log_comments {
+            comment_lines.push(*line_no);
+        }
+        comment_lines.sort();
+        let comment_line_no = comment_lines[comment_index];
+
+        let scroll_to_comment_done = self.scroll_to_line(ui, row_range, comment_line_no);
+        if scroll_to_comment_done {
+            self.state.comments_last_shown_index = Some(comment_index);
+        }
+
+        // TODO: this feature should take into consideration that some lines with comments
+        //       on them are not visible (filtered out)
+    }
+
+    fn scroll_to_search_result_or_line(
+        &mut self,
+        ui: &egui::Ui,
+        row_range: &std::ops::Range<usize>,
+    ) {
+        // Goto line takes precedence over search results.
+        if !self.user_settings.goto_line_number.is_empty() {
+            if let Ok(line_number) = self.user_settings.goto_line_number.parse::<usize>() {
+                // Close the gotoline window and reset the line number when line reached.
+                self.state.win_gotoline_open = false;
+
+                let line_reached = self.scroll_to_line(ui, row_range, line_number);
+                if line_reached {
+                    self.user_settings.goto_line_number.clear();
+                    self.user_settings_staging.goto_line_number.clear();
+                }
+            }
+        } else if !self.state.search_found.is_empty() {
+            self.scroll_to_search_result(ui, row_range);
+        } else if self.state.comments_last_shown_index.is_some()
+            && self.state.comments_last_shown_index.unwrap() != self.state.comments_showing_index
+        {
+            self.scroll_to_comment(ui, row_range, self.state.comments_showing_index);
+        }
+    }
+
     fn show_comment_add_window(&mut self, ctx: &egui::Context) {
         if self.state.add_comment_request.is_none() {
             return;
@@ -1231,6 +1437,7 @@ impl eframe::App for LogalyzerGUI {
         self.show_log_format_window(ctx);
         self.show_token_colors_panel(ctx);
         self.show_histogram_window(ctx);
+        self.show_gotoline_window(ctx);
 
         self.recalculate_logfile_display();
 
@@ -1284,7 +1491,7 @@ impl eframe::App for LogalyzerGUI {
                             ui.set_min_height(ui.available_height());
                             ui.scroll_with_delta(scroll_delta_keyboard);
 
-                            self.scroll_to_search_result(ui, &row_range);
+                            self.scroll_to_search_result_or_line(ui, &row_range);
 
                             let mut text_wrapping = TextWrapping::default();
                             if self.user_settings.wrap_text {

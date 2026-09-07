@@ -95,7 +95,9 @@ pub fn default_log_content() -> LayoutJob {
     Ctrl + F: search\n\
     Ctrl + I: filter\n\
     Ctrl + T: toggle token colors panel\n\
-    Ctrl + H: toggle histogram window\n\n",
+    Ctrl + H: toggle histogram window\n\
+    Ctrl + G: go to line\n
+    \n",
         env!("CARGO_PKG_VERSION")
     );
 
@@ -142,7 +144,10 @@ pub fn load_file(user_settings: &UserSettings) -> Option<OpenedFileMetadata> {
     Some(opened_file_meta)
 }
 
-fn make_line_handlers(user_settings: &UserSettings) -> Vec<Box<dyn LineHandler>> {
+fn make_line_handlers(
+    user_settings: &UserSettings,
+    opened_file: &OpenedFileMetadata,
+) -> Vec<Box<dyn LineHandler>> {
     let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
 
     // The filter should be first, so we're not applying other handlers to lines that will be invisible anyway.
@@ -174,6 +179,12 @@ fn make_line_handlers(user_settings: &UserSettings) -> Vec<Box<dyn LineHandler>>
         }
     }
 
+    let comments_only_line_handler =
+        CommentsOnlyLineHandler::new(user_settings, opened_file.log_comments.clone());
+    if comments_only_line_handler.is_active() {
+        handlers.push(Box::from(comments_only_line_handler));
+    }
+
     handlers
 }
 
@@ -192,7 +203,7 @@ pub fn recalculate_log_job(
     let mut jobs_line_numbers: Vec<LayoutJob> = Vec::new();
     let mut points_of_interest: Vec<PointOfInterest> = Vec::new();
 
-    let mut handlers = make_line_handlers(user_settings);
+    let mut handlers = make_line_handlers(user_settings, opened_file);
 
     let mut lines_visible = 0;
     let mut lines_total_counter = 0;
@@ -218,7 +229,7 @@ pub fn recalculate_log_job(
                     break;
                 }
 
-                handler.process_line(&mut line_parts);
+                handler.process_line(&mut line_parts, lines_total_counter);
 
                 // This should ideally be fixed, as we're uncovering here the line handler type.
                 if handler.handler_type() == LineHandlerType::Search {
@@ -228,6 +239,7 @@ pub fn recalculate_log_job(
                     }
 
                     // Set line number in each point of interest, as the line handler don't know it.
+                    // This is the number of visible lines, not the total line number in the file (some may be filtered out).
                     for poi in &mut points_of_interest_in_line {
                         poi.line = lines_visible + 1;
                     }

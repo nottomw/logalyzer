@@ -5,18 +5,21 @@ use crate::PointOfInterest;
 use crate::linevec::*;
 use crate::user_settings::UserSettings;
 
+use std::collections::HashMap;
+
 #[derive(PartialEq)]
 pub enum LineHandlerType {
     LogFormat,
     TokenHilight,
     Filter,
     Search,
+    CommentsOnly,
 }
 
 pub trait LineHandler {
     fn handler_type(&self) -> LineHandlerType;
     fn is_active(&self) -> bool;
-    fn process_line(&mut self, line: &mut LineVec);
+    fn process_line(&mut self, line: &mut LineVec, line_no: usize);
     fn points_of_interest(&self) -> Vec<PointOfInterest>;
 }
 
@@ -97,7 +100,7 @@ impl LineHandler for LogFormatLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut LineVec) {
+    fn process_line(&mut self, line: &mut LineVec, _line_no: usize) {
         assert!(
             line.len() == 1,
             "LogFormatLineHandler expects a single full line, got {} parts",
@@ -196,7 +199,7 @@ impl LineHandler for TokenHilightLineHandler {
         return false;
     }
 
-    fn process_line(&mut self, line: &mut LineVec) {
+    fn process_line(&mut self, line: &mut LineVec, _line_no: usize) {
         let mut line_result = line.clone();
 
         for (token, color) in self.token_colors.iter() {
@@ -258,7 +261,7 @@ impl LineHandler for FilterLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut LineVec) {
+    fn process_line(&mut self, line: &mut LineVec, _line_no: usize) {
         let mut search_terms: Vec<String> = Vec::new();
         let mut is_and_term = false;
 
@@ -365,7 +368,7 @@ impl LineHandler for SearchLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut LineVec) {
+    fn process_line(&mut self, line: &mut LineVec, _line_no: usize) {
         self.points_of_interest.clear(); // Clear previous points of interest.
 
         let split_points = linevec_find(&line, &self.search_term, self.match_case, self.whole_word);
@@ -392,6 +395,48 @@ impl LineHandler for SearchLineHandler {
 
     fn points_of_interest(&self) -> Vec<PointOfInterest> {
         self.points_of_interest.clone()
+    }
+}
+
+pub struct CommentsOnlyLineHandler {
+    comments_only: bool,
+    comments_lines_map: HashMap<usize, String>, // Maps line numbers to comment text.
+}
+
+impl CommentsOnlyLineHandler {
+    pub fn new(
+        user_settings: &UserSettings,
+        comments_lines_map_state: HashMap<usize, String>,
+    ) -> Self {
+        Self {
+            comments_only: user_settings.comments_only,
+            comments_lines_map: comments_lines_map_state,
+        }
+    }
+}
+
+impl LineHandler for CommentsOnlyLineHandler {
+    fn handler_type(&self) -> LineHandlerType {
+        LineHandlerType::CommentsOnly
+    }
+
+    fn is_active(&self) -> bool {
+        self.comments_only
+    }
+
+    fn process_line(&mut self, line: &mut LineVec, line_no: usize) {
+        if !self.comments_only {
+            return;
+        }
+
+        // Filter out lines that do not have comments.
+        if !self.comments_lines_map.contains_key(&line_no) {
+            line.clear();
+        }
+    }
+
+    fn points_of_interest(&self) -> Vec<PointOfInterest> {
+        Vec::new()
     }
 }
 
