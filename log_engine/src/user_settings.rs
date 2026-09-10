@@ -22,6 +22,7 @@ pub struct UserSettings {
     pub filter_whole_word: bool,
     pub filter_negative: bool,
     pub filter_extended: bool,
+    pub filter_show_comments: bool,
     pub file_path: String,
     pub log_format: LogFormat,
     pub token_colors: Vec<(String, Color32)>,
@@ -50,10 +51,15 @@ struct UserSettingsSerDes {
     pub log_format_pattern_coloring: Vec<(u8, u8, u8, u8)>, // RGBA
     pub log_format_pattern_coloring_text: Vec<(u8, u8, u8, u8)>, // RGBA
     pub log_format_pattern_coloring_text_use_original: Vec<bool>,
+    #[serde(default)]
+    pub filter_show_comments: bool,
     pub token_colors: Vec<(String, (u8, u8, u8, u8))>, // token_name, RGBA
     pub font_size: f32,
+    #[serde(default)]
     pub comments_visible: bool,
+    #[serde(default)]
     pub comments_only: bool,
+    #[serde(default)]
     pub goto_line_number: String,
 }
 
@@ -95,6 +101,7 @@ impl UserSettings {
             font_size: self.font.size,
             comments_visible: self.comments_visible,
             comments_only: self.comments_only,
+            filter_show_comments: self.filter_show_comments,
             goto_line_number: String::new(),
         };
 
@@ -144,6 +151,7 @@ impl UserSettings {
             filter_whole_word: ser_des.filter_whole_word,
             filter_negative: ser_des.filter_negative,
             filter_extended: ser_des.filter_extended,
+            filter_show_comments: ser_des.filter_show_comments,
             file_path: String::new(),
             log_format,
             token_colors,
@@ -170,6 +178,7 @@ impl Default for UserSettings {
             filter_whole_word: false,
             filter_negative: false,
             filter_extended: false,
+            filter_show_comments: false,
             file_path: String::new(),
             log_format: LogFormat::default(),
             token_colors: Vec::with_capacity(25),

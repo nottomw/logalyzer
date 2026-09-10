@@ -230,10 +230,15 @@ pub struct FilterLineHandler {
     whole_word: bool,
     negative: bool,
     extended: bool,
+    comments_map: HashMap<usize, String>,
+    show_comments: bool,
 }
 
 impl FilterLineHandler {
-    pub fn new(user_settings: &UserSettings) -> Option<Self> {
+    pub fn new(
+        user_settings: &UserSettings,
+        comments_lines_map_state: HashMap<usize, String>,
+    ) -> Option<Self> {
         if user_settings.filter_term.is_empty() {
             return None;
         }
@@ -244,6 +249,8 @@ impl FilterLineHandler {
             whole_word: user_settings.filter_whole_word,
             negative: user_settings.filter_negative,
             extended: user_settings.filter_extended,
+            comments_map: comments_lines_map_state,
+            show_comments: user_settings.filter_show_comments,
         })
     }
 }
@@ -261,9 +268,17 @@ impl LineHandler for FilterLineHandler {
         return true;
     }
 
-    fn process_line(&mut self, line: &mut LineVec, _line_no: usize) {
+    fn process_line(&mut self, line: &mut LineVec, line_no: usize) {
         let mut search_terms: Vec<String> = Vec::new();
         let mut is_and_term = false;
+
+        // Always show commented lines if the setting is active.
+        if self.show_comments && !self.comments_map.is_empty() {
+            let comment_on_this_line = self.comments_map.get(&line_no);
+            if comment_on_this_line.is_some() {
+                return;
+            }
+        }
 
         if self.extended {
             // Parse extended filter terms with && and ||.
@@ -457,6 +472,8 @@ mod tests {
             whole_word,
             negative,
             extended,
+            comments_map: HashMap::new(),
+            show_comments: false,
         }
     }
 

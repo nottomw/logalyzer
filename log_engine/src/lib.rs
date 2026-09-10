@@ -151,7 +151,8 @@ fn make_line_handlers(
     let mut handlers: Vec<Box<dyn LineHandler>> = Vec::new();
 
     // The filter should be first, so we're not applying other handlers to lines that will be invisible anyway.
-    let filter_line_handler = FilterLineHandler::new(user_settings);
+    let filter_line_handler =
+        FilterLineHandler::new(user_settings, opened_file.log_comments.clone());
     if let Some(handler) = filter_line_handler {
         if handler.is_active() {
             handlers.push(Box::from(handler));

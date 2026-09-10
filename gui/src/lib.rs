@@ -650,6 +650,9 @@ impl LogalyzerGUI {
                     .on_hover_text(
                         "Enable simple extended filtering with either only && clauses or only || clauses.\nExample: \"error && failed && stack trace\"\nExample: \"error || warning || info\"",
                     );
+                ui.checkbox(&mut self.user_settings.filter_show_comments, "Show Comments")
+                    .on_hover_text("Always show lines that contain comments.");
+
                 // TODO: maybe option to show N lines before/after match
             });
         });
